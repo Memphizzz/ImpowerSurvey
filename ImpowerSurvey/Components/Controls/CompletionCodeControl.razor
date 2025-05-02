@@ -1,0 +1,61 @@
+@using ImpowerSurvey.Components.Model
+@using ImpowerSurvey.Services
+
+@inject DialogService DialogService
+@inject SurveyCodeService SurveyCodeService
+@switch (Survey.ParticipationType)
+{
+    case ParticipationTypes.Manual:
+        <RadzenAlert AlertStyle="AlertStyle.Info" AllowClose="false">
+            Participant ID can be whatever you would like to see in the Participation List.<br/>You may also leave it empty to be fully anonymous.
+        </RadzenAlert>
+        <RadzenTemplateForm TItem="@CompletionCodeControl" Data="@(this)" Submit="@OnSubmitManualCompletionCode">
+            <RadzenFormField Text="Participant ID" Style="margin-top: 5px; margin-bottom: 5px;">
+                <RadzenTextBox Name="txtParticipantID" @bind-Value="@ParticipantID" Placeholder="Participant ID"/>
+            </RadzenFormField>
+            <RadzenFormField Text="Completion Code" Style="margin-top: 5px; margin-bottom: 5px;">
+                <RadzenTextBox Name="txtCompletionCode" @bind-Value="@CompletionCode" Placeholder="Completion Code"/>
+                <RadzenRequiredValidator Component="txtCompletionCode" Text="" Style="position: absolute"/>
+            </RadzenFormField>
+
+            <RadzenButton Text="Submit Completion Code" ButtonStyle="ButtonStyle.Success" Style="margin-top: 5px;" ButtonType="ButtonType.Submit"/>
+        </RadzenTemplateForm>
+        break;
+
+    case ParticipationTypes.Slack:
+        <RadzenAlert AlertStyle="AlertStyle.Success" AllowClose="false">
+            Participants of this Survey submit their CompletionCodes through Slack
+        </RadzenAlert>
+        break;
+
+    default:
+        throw new ArgumentOutOfRangeException();
+}
+
+@code
+{
+    [Parameter]
+    public Survey Survey { get; set; }
+
+    public bool IsBusy { get; set; }
+    private string ParticipantID { get; set; }
+    private string CompletionCode { get; set; }
+
+	private async Task OnSubmitManualCompletionCode()
+	{
+		IsBusy = true;
+		await Task.Yield();
+
+		var result = await SurveyCodeService.ValidateAndBurnCompletionCodeAsync(Survey.Id, CompletionCode, ParticipantID);
+		if (result.Successful)
+		{
+			await DialogService.Alert(result.Message, Constants.UI.Success);
+			ParticipantID = null;
+			CompletionCode = null;
+		}
+		else
+			await DialogService.Alert(result.Message, Constants.UI.Error);
+
+		IsBusy = false;
+	}
+}

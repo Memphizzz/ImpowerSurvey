@@ -1,0 +1,94 @@
+@page "/create-survey"
+@page "/edit-survey/{SurveyID:guid}"
+@using ImpowerSurvey.Components.Model
+@using ImpowerSurvey.Services
+@using ImpowerSurvey.Components.Controls
+@inject SurveyService SurveyService
+@inject NavigationManager NavigationManager
+@inject NotificationService NotificationService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject DialogService DialogService
+@inject IJSUtilityService JSUtilityService
+
+<PageTitle>@nameof(ImpowerSurvey)</PageTitle>
+
+<CascadingAuthenticationState>
+    <AuthorizeView Roles="@nameof(Roles.SurveyManager)">
+        <NotAuthorized>
+            <NotAuthorizedControl LogError="true" />
+            @{ _registration?.Dispose(); }
+        </NotAuthorized>
+        <Authorized>
+            <div id="@Constants.UI.StartElement"></div>
+            @if (Survey == null)
+            {
+                <RadzenText>Fetching Data, please wait..</RadzenText>
+            }
+            else
+            {
+                <RadzenTemplateForm TItem="Survey" Data="@Survey" Submit="@OnSubmit" Context="formContext" Style="@Constants.UI.StyleFlexGrowCol">
+                    <HeaderControl Title="@PageTitle" Icon="edit">
+                        <BButton Text="@(SurveyId.HasValue ? "Save Changes" : "Create Survey")" Icon="check_circle"
+                                 ButtonStyle="ButtonStyle.Success" Click="@(() => HandleEditorAction(SurveyEditorAction.SaveChanges, null))"/>
+                        <BButton Text="Add Question" Icon="add" ButtonStyle="ButtonStyle.Info" Style="margin-top: 5px;"
+                                 Click="@(() => HandleEditorAction(SurveyEditorAction.AddQuestion, null))"/>
+                    </HeaderControl>
+                    <RadzenStack Gap="1rem" Style="@Constants.UI.StyleFlexGrowCol">
+                        <RadzenFormField Text="Title">
+                            <RadzenTextBox Name="txtTitle" @bind-Value="@Survey.Title"/>
+                            <RadzenRequiredValidator Component="txtTitle" Text=""/>
+                        </RadzenFormField>
+                        <RadzenFormField Text="Manager">
+                            <RadzenTextBox Name="txtManagerName" Disabled="true" Value="@ManagerName"/>
+                            <RadzenRequiredValidator Component="txtManagerName" Text=""/>
+                        </RadzenFormField>
+                        <RadzenFormField Text="Description">
+                            <RadzenTextArea @bind-Value="@Survey.Description" Rows="3"/>
+                        </RadzenFormField>
+                    </RadzenStack>
+                    @foreach (var question in Survey.Questions)
+                    {
+                        <div class="glass-card" Style="margin-bottom: 15px; margin-top: 20px; padding: 1rem;">
+                            <RadzenButton Text="@GenerateQuestionTitle(question)" Size="ButtonSize.ExtraSmall" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Light" Style="@Constants.UI.StyleGroupBorder"/>
+                            <RadzenRow Style="margin-top: 0px;">
+                                <RadzenFormField Text="Question Text" Style="@Constants.UI.StyleFlexGrowCol">
+                                    <RadzenTextArea @bind-Value=@question.Text Rows="2" Style="resize: none;"/>
+                                </RadzenFormField>
+                            </RadzenRow>
+                            <RadzenRow Style="margin-top: 5px;">
+                                <RadzenColumn Size="2">
+                                    <RadzenStack>
+                                        <RadzenFormField Text="Question Type">
+                                            <RadzenDropDown @bind-Value=@question.Type Data=@Enum.GetValues(typeof(QuestionTypes))
+                                                            Change=@(() => OnQuestionTypeChange(question))/>
+                                        </RadzenFormField>
+                                        <RadzenButton Click="@(() => HandleEditorAction(SurveyEditorAction.RemoveQuestion, question))"
+                                                      Text="Remove Question" Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"/>
+                                    </RadzenStack>
+                                </RadzenColumn>
+                                <RadzenColumn Size="10">
+                                    @if (question.Type is QuestionTypes.MultipleChoice or QuestionTypes.SingleChoice)
+                                    {
+                                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Style="flex-wrap: wrap !important;" Gap="5px">
+                                            <RadzenButton Click=@(() => AddOption(question)) Icon="add" Style="margin-top:8px;"/>
+                                            @foreach (var option in question.Options)
+                                            {
+                                                <RadzenFormField Text="@GenerateOptionTitle(question, option)">
+                                                    <RadzenTextBox Name="txtTitle" @bind-Value="@option.Text"/>
+                                                    <RadzenRequiredValidator Component="txtTitle" Text=""/>
+                                                </RadzenFormField>
+                                                <RadzenButton Click=@(() => RemoveOption(question, option)) Icon="delete" ButtonStyle="ButtonStyle.Light" Style="margin-left:-44px; margin-top:8px;"/>
+                                            }
+                                        </RadzenStack>
+                                    }
+                                </RadzenColumn>
+                            </RadzenRow>
+                        </div>
+                    }
+                    <BButton Text="Back To Top" Icon="vertical_align_top" Size="ButtonSize.Small" Click="() => JSUtilityService.ScrollToElement(Constants.UI.StartElement)" ButtonStyle="ButtonStyle.Primary"/>
+                    <div id="@Constants.UI.EndElement"></div>
+                </RadzenTemplateForm>
+            }
+        </Authorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>

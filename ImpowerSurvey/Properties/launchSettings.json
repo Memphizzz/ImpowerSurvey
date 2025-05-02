@@ -1,0 +1,44 @@
+{
+  "profiles": {
+    "ImpowerSurvey.Server": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "dotnetRunMessages": true,
+      //NOTE: Change this and profile two to your machines IP address for local testing
+      //      Use 'git update-index --assume-unchanged ImpowerSurvey/Properties/launchSettings.json'
+      //      To ignore changes to this file in your local development environment
+      "applicationUrl": "https://X.X.X.X:5005;http://X.X.X.X:5004",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "HOSTNAME": "<your-machines-name>",
+        "PORT": "5005"
+      }
+    },
+    "ImpowerSurvey.Server2": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": true,
+      "applicationUrl": "https://X.X.X.X:5007;http://X.X.X.X:5006",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "HOSTNAME": "<your-machines-name>2",
+        "PORT": "5007"
+      }
+    },
+    "IIS Express": {
+      "commandName": "IISExpress",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  },
+  "iisSettings": {
+    "windowsAuthentication": false,
+    "anonymousAuthentication": true,
+    "iisExpress": {
+      "applicationUrl": "http://localhost:19712",
+      "sslPort": 44395
+    }
+  }
+}

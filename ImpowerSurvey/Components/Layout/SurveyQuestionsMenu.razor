@@ -1,0 +1,97 @@
+@inject NavigationManager NavigationManager
+@inject SurveyService SurveyService
+@inject AuthenticationStateProvider AuthStateProvider
+@using ImpowerSurvey.Components.Model
+@using ImpowerSurvey.Services
+@implements IDisposable
+
+@if (Survey != null)
+{
+    <RadzenPanelMenuItem Text="Welcome" 
+                         Icon="home" 
+                         Click="@(() => OnQuestionClick(0))"
+                         Style="@(CurrentPageIndex == 0 ? "font-weight: bold;" : "")"/>
+                         
+    <RadzenPanelMenuItem Text="Survey Questions" Icon="list" Expanded="true">
+        @for (var i = 0; i < Survey.Questions.Count; i++)
+        {
+            var question = Survey.Questions[i];
+            var questionIndex = i;
+            var shortText = GetQuestionLabel(question, questionIndex);
+            var isCurrent = CurrentPageIndex == questionIndex + 1;
+
+            <RadzenPanelMenuItem Text="@shortText"
+                                 Icon="@(isCurrent ? "arrow_right" : "question_answer")"
+                                 Style="@(isCurrent ? "font-weight: bold;" : "")"
+                                 Click="@(() => OnQuestionClick(questionIndex + 1))"/>
+        }
+    </RadzenPanelMenuItem>
+
+    <RadzenPanelMenuItem Text="Submit Survey" 
+                         Icon="send" 
+                         Click="@(() => OnQuestionClick(Survey.Questions.Count + 1))"
+                         Style="@(CurrentPageIndex == Survey.Questions.Count + 1 ? "font-weight: bold;" : "")"/>
+}
+
+@code {
+    private Survey Survey { get; set; }
+    private int CurrentPageIndex { get; set; } = 0; // Default to Welcome page
+    private CustomAuthStateProvider _authStateProvider;
+
+    protected override void OnInitialized()
+    {
+        _authStateProvider = CustomAuthStateProvider.Get(AuthStateProvider);
+        _authStateProvider.SurveyNavigationStateChanged += HandleSurveyNavigationStateChanged;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        Survey = _authStateProvider.GetCurrentSurvey();
+        CurrentPageIndex = _authStateProvider.GetCurrentPageIndex();
+        
+        // If we just loaded, ensure we start at the welcome page
+        if (CurrentPageIndex == 1 && NavigationManager.Uri.Contains("/take-survey/") && !NavigationManager.Uri.Contains("?"))
+        {
+            // First visit to the survey - start at welcome
+            OnQuestionClick(0);
+        }
+    }
+
+    private void HandleSurveyNavigationStateChanged(Survey survey, int pageIndex)
+    {
+        // When the wizard updates the page index, update our state
+        CurrentPageIndex = pageIndex;
+
+        // Update the survey if it changed
+        if (survey != null && (Survey == null || Survey.Id != survey.Id))
+            Survey = survey;
+
+        StateHasChanged();
+    }
+
+    private void OnQuestionClick(int pageIndex)
+    {
+        // Update the auth state provider without changing the URL
+        _authStateProvider.SetCurrentPageIndex(pageIndex);
+    }
+
+    public void Dispose()
+    {
+        // Clean up subscription when component is disposed
+        if (_authStateProvider != null)
+            _authStateProvider.SurveyNavigationStateChanged -= HandleSurveyNavigationStateChanged;
+    }
+
+    private string GetQuestionLabel(Question question, int index)
+    {
+        var shortText = question.Text;
+        if (shortText.Length > 25)
+        {
+            shortText = shortText.Substring(0, 22) + "...";
+        }
+
+        return $"Q{index + 1}: {shortText}";
+    }
+}

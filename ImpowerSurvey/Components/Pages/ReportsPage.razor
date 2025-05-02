@@ -1,0 +1,95 @@
+@page "/reports"
+@using ImpowerSurvey.Services
+@using ImpowerSurvey.Components.Controls
+@using ImpowerSurvey.Components.Model
+@using ImpowerSurvey.Components.Utilities
+@inject NotificationService NotificationService
+@inject ThemeService ThemeService
+@inject SurveyService SurveyService
+@inject IJSUtilityService JSUtilityService
+@inject IReportBuilder ReportBuilder
+
+<PageTitle>@nameof(ImpowerSurvey) - Combined Reports</PageTitle>
+
+<CascadingAuthenticationState>
+    <AuthorizeView Roles="@nameof(Roles.SurveyManager)">
+        <NotAuthorized>
+            <NotAuthorizedControl LogError="true" />
+        </NotAuthorized>
+        <Authorized>
+            <RadzenStack class="rz-p-4" Gap="1rem">
+                <HeaderControl Title="Combined Reports" Subtitle="Generate aggregated reports from multiple surveys" />
+                
+                <RadzenCard Variant="Variant.Filled" class="glass-card">
+                    <RadzenText TextStyle="TextStyle.H5">Select Surveys to Combine</RadzenText>
+                    <RadzenText TextStyle="TextStyle.Body1" TagName="TagName.P">
+                        Choose two or more closed surveys to combine their data into a single report. 
+                        Only closed surveys can be combined.
+                    </RadzenText>
+                    
+                    @if (ClosedSurveys == null)
+                    {
+                        <RadzenProgressBar Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate"/>
+                    }
+                    else if (!ClosedSurveys.Any())
+                    {
+                        <RadzenAlert AlertStyle="AlertStyle.Warning" Variant="Variant.Filled" Size="AlertSize.Medium" Shade="Shade.Lighter" ShowIcon="true">
+                            <RadzenText TextStyle="TextStyle.Body1">No closed surveys available for combined reporting</RadzenText>
+                        </RadzenAlert>
+                    }
+                    else
+                    {                        
+                        <RadzenStack Gap="1rem">
+                            <ImpowerChoices Options="@SurveyOptions" 
+                                            IsMultiple="true" 
+                                            SelectedValues="@SelectedSurveyValues"
+                                            SelectedValuesChanged="@OnSelectedSurveysChanged"/>
+                            
+                            <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="1rem" Class="mt-4">
+                                <RadzenButton Text="Generate HTML Report" 
+                                              Icon="file_download" 
+                                              ButtonStyle="ButtonStyle.Primary" 
+                                              Click="@(() => GenerateCombinedReport(ReportType.Html))" 
+                                              Disabled="@(!CanGenerateReport || IsBusy)"
+                                              IsBusy="@IsBusy"
+                                              BusyText="Generating..."/>
+                                
+                                <RadzenButton Text="Generate CSV Report" 
+                                              Icon="file_download" 
+                                              ButtonStyle="ButtonStyle.Secondary" 
+                                              Click="@(() => GenerateCombinedReport(ReportType.Csv))" 
+                                              Disabled="@(!CanGenerateReport || IsBusy)"
+                                              IsBusy="@IsBusy"
+                                              BusyText="Generating..."/>
+                            </RadzenStack>
+                        </RadzenStack>
+                    }
+                </RadzenCard>
+                
+                @if (SelectedSurveys.Any())
+                {
+                    <RadzenCard Variant="Variant.Filled" class="glass-card">
+                        <RadzenText TextStyle="TextStyle.H5">Selected Surveys</RadzenText>
+                        
+                        <RadzenDataGrid Data="@SelectedSurveys" AllowSorting="true" AllowFiltering="true" 
+                                       AllowPaging="true" PageSize="5" Class="mt-3">
+                            <Columns>
+                                <RadzenDataGridColumn TItem="Survey" Property="Title" Title="Survey Title" />
+                                <RadzenDataGridColumn TItem="Survey" Property="Manager.DisplayName" Title="Manager" />
+                                <RadzenDataGridColumn TItem="Survey" Property="CreationDate" Title="Created" FormatString="{0:d}" />
+                                <RadzenDataGridColumn TItem="Survey" Property="UsedCompletionCodes" Title="Responses" Width="100px" />
+                                <RadzenDataGridColumn TItem="Survey" Property="Questions.Count" Title="Questions" Width="100px" />
+                                <RadzenDataGridColumn TItem="Survey" Title="Actions" Width="80px" Filterable="false" Sortable="false">
+                                    <Template Context="survey">
+                                        <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Size="ButtonSize.Small"
+                                                      Click="@(() => RemoveSurvey(survey))" />
+                                    </Template>
+                                </RadzenDataGridColumn>
+                            </Columns>
+                        </RadzenDataGrid>
+                    </RadzenCard>
+                }
+            </RadzenStack>
+        </Authorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>

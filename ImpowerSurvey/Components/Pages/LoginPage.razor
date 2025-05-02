@@ -1,0 +1,71 @@
+@page "/login"
+@using ImpowerSurvey.Services
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NotificationService NotificationService
+
+<PageTitle>@nameof(ImpowerSurvey)</PageTitle>
+
+<RadzenCard Style="max-width: 400px; margin: auto; margin-top: 100px;">
+    <RadzenText TextStyle="TextStyle.H5" TagName="TagName.H2" class="mb-4">Login</RadzenText>
+    <RadzenTemplateForm TItem="LoginModel" Data="@_loginModel" Submit="@OnSubmit">
+        <RadzenStack Gap="1">
+            <RadzenFormField Text="Username">
+                <RadzenTextBox @ref="@_txtUserName" Name="txtUserName" @bind-Value="@_loginModel.Username" Disabled="@IsBusy"/>
+                <RadzenRequiredValidator Component="txtUserName" Text=""/>
+            </RadzenFormField>
+            <RadzenFormField Text="Password">
+                <RadzenPassword Name="txtPassword" @bind-Value="@_loginModel.Password" Disabled="@IsBusy"/>
+                <RadzenRequiredValidator Component="txtPassword" Text=""/>
+            </RadzenFormField>
+            <RadzenButton ButtonType="ButtonType.Submit" Text="Login" ButtonStyle="ButtonStyle.Primary" IsBusy="@IsBusy" BusyText="@Constants.UI.Busy" Style="margin-top: 5px;"/>
+        </RadzenStack>
+    </RadzenTemplateForm>
+</RadzenCard>
+
+@code
+{
+    private bool IsBusy { get; set; }
+    private readonly LoginModel _loginModel = new();
+    private RadzenTextBox _txtUserName;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        await CustomAuthStateProvider.Get(AuthStateProvider).ApplyDeferredAuthCookieAsync();
+        
+        if (firstRender)
+        {
+            await CustomAuthStateProvider.Get(AuthStateProvider).LogoutAsync();
+            _ = _txtUserName.Element.FocusAsync();
+        }
+    }
+
+    private async Task OnSubmit()
+    {
+        IsBusy = true;
+        await Task.Yield();
+        var result = await CustomAuthStateProvider.Get(AuthStateProvider).LoginAsync(_loginModel.Username, _loginModel.Password);
+
+        if (result.Successful)
+        {
+            if (result.Message == Constants.Users.PasswordChangeRequired)
+            {
+                NotificationService.Notify(NotificationSeverity.Info, "Password Change Required", 
+                    "You need to change your password before continuing.");
+            }
+            NavigationManager.NavigateTo(result.Data);
+        }
+        else
+        {
+            NotificationService.Notify(NotificationSeverity.Error, Constants.Auth.InvalidLoginHeader, Constants.Auth.InvalidLogin);
+            IsBusy = false;
+        }
+    }
+
+    private class LoginModel
+    {
+        public string Username { get; set; }
+        public string Password { get; set; }
+    }
+}

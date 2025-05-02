@@ -1,0 +1,79 @@
+@inject DialogService DialogService
+
+<RadzenStack Style="margin: 0 auto;">
+    <RadzenCard>
+        <RadzenStack Style="display: flex; flex-direction: column; height: 75vh;">
+            <RadzenStack Style="flex: 1; overflow-y: auto;" Gap="0">
+                <RadzenText TextStyle="TextStyle.Body1">
+                    ImpowerSurvey uses only essential cookies that are necessary for the website to function properly.<br/>
+                    We do not use any tracking, advertising, or analytics cookies.
+                </RadzenText>
+                <RadzenText TextStyle="TextStyle.H6" Style="margin-top: 5px;">What cookies do we use?</RadzenText>
+                <RadzenStack Gap="5px" Style="margin-bottom: 5px;">
+                    <RadzenAlert ShowIcon="false" AllowClose="false" Style="--rz-alert-background-color: var(--rz-accordion-item-background-color); margin: 0px;">
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
+                            <RadzenIcon Icon="schedule" IconStyle="IconStyle.Info"/>
+                            <RadzenText Style="font-size: 22px;">1. Timezone</RadzenText>
+                        </RadzenStack>
+                        <RadzenStack Gap="0">
+                            <RadzenText>
+                                <strong>Purpose:</strong> To store your local timezone for accurate scheduling and event display
+                            </RadzenText>
+                            <RadzenText>
+                                <strong>Duration:</strong> 30 days
+                            </RadzenText>
+                            <RadzenText>
+                                <strong>Essential:</strong> Yes (required for accurate time display)
+                            </RadzenText>
+                        </RadzenStack>
+                    </RadzenAlert>
+                    <RadzenAlert ShowIcon="false" AllowClose="false" Style="--rz-alert-background-color: var(--rz-accordion-item-background-color); margin: 0px;">
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
+                            <RadzenIcon Icon="fingerprint" IconStyle="IconStyle.Info"/>
+                            <RadzenText Style="font-size: 22px;">2. Cookie Consent</RadzenText>
+                        </RadzenStack>
+                        <RadzenStack Gap="0">
+                            <RadzenText>
+                                <strong>Purpose:</strong> To remember that you've accepted our cookie policy
+                            </RadzenText>
+                            <RadzenText>
+                                <strong>Duration:</strong> 30 days
+                            </RadzenText>
+                            <RadzenText>
+                                <strong>Essential:</strong> Yes (required to comply with privacy regulations)
+                            </RadzenText>
+                        </RadzenStack>
+                    </RadzenAlert>
+                    <RadzenAlert ShowIcon="false" AllowClose="false" Style="--rz-alert-background-color: var(--rz-accordion-item-background-color); margin: 0px;">
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
+                            <RadzenIcon Icon="password" IconStyle="IconStyle.Info"/>
+                            <RadzenText Style="font-size: 22px;">3. Authentication</RadzenText>
+                        </RadzenStack>
+                        <RadzenStack Gap="0">
+                            <RadzenText>
+                                <strong>Purpose:</strong> To keep survey managers logged in as they navigate between pages or refresh their browser (does not apply to survey participants)
+                            </RadzenText>
+                            <RadzenText>
+                                <strong>Duration:</strong> 30 days or until you log out
+                            </RadzenText>
+                            <RadzenText>
+                                <strong>Essential:</strong> Yes (required for survey management functionality)
+                            </RadzenText>
+                        </RadzenStack>
+                    </RadzenAlert>
+                </RadzenStack>
+                <RadzenText TextStyle="TextStyle.Body1">
+                    These cookies do not track you across other websites, do not contain personal information beyond what is necessary
+                    for their core function, and are used solely to provide basic website functionality.
+                </RadzenText>
+                <RadzenText TextStyle="TextStyle.H6" Style="margin-top: 15px;">That's it!</RadzenText>
+                <RadzenText TextStyle="TextStyle.Body1">
+                    No tracking, no analytics, no advertising - just the bare minimum needed to keep things working properly.
+                </RadzenText>
+            </RadzenStack>
+            <RadzenStack>
+                <BButton Click="@(() => DialogService.Close(true))" Text="Thank you"/>
+            </RadzenStack>
+        </RadzenStack>
+    </RadzenCard>
+</RadzenStack>

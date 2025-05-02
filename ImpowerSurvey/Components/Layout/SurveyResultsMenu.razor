@@ -1,0 +1,213 @@
+@using ImpowerSurvey.Components.Controls
+@using ImpowerSurvey.Components.Model
+@using ImpowerSurvey.Components.Utilities
+@using ImpowerSurvey.Services
+@implements IDisposable
+@inject SurveyService SurveyService
+@inject DialogService DialogService
+@inject ThemeService ThemeService
+@inject NavigationManager NavigationManager
+@inject NotificationService NotificationService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IJSUtilityService JSUtilityService
+@inject IReportBuilder ReportBuilder
+
+@if (Survey != null)
+{
+    <RadzenPanelMenuItem Icon="analytics" Style="font-weight: bold; color: var(--rz-primary);" Text="Results Dashboard" Expanded="true">
+        <RadzenStack Gap="0.5rem" Style="margin: 8px;">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                <RadzenBadge BadgeStyle="@(Survey.State.GetSurveyStateBadgeStyle())" Text="@Survey.State.ToString()"/>
+                <RadzenText TextStyle="TextStyle.Caption" Style="margin: 0px;">ID: @Survey.Id</RadzenText>
+            </RadzenStack>
+        </RadzenStack>
+
+        <RadzenCard Class="mb-3">
+            <RadzenText TextStyle="TextStyle.Subtitle1">Quick Stats</RadzenText>
+            <RadzenStack Gap="0.5rem">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" Gap="0.5rem">
+                    <RadzenText TextStyle="TextStyle.Body2">Survey State:</RadzenText>
+                    <RadzenBadge BadgeStyle="@(Survey.State.GetSurveyStateBadgeStyle())" Text="@Survey.State.ToString()"/>
+                </RadzenStack>
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" Gap="0.5rem">
+                    <RadzenText TextStyle="TextStyle.Body2">Questions:</RadzenText>
+                    <RadzenBadge BadgeStyle="BadgeStyle.Info" Text="@((Questions?.Count ?? 0).ToString())"/>
+                </RadzenStack>
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" Gap="0.5rem">
+                    <RadzenText TextStyle="TextStyle.Body2">Responses:</RadzenText>
+                    <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="@((Responses?.Count ?? 0).ToString())"/>
+                </RadzenStack>
+            </RadzenStack>
+        </RadzenCard>
+
+        <RadzenPanelMenuItem Text="Views" Icon="visibility" Expanded="true">
+            <div class="menu-button-wrapper">
+                <BButton Text="Overview" Icon="dashboard" ButtonStyle="ButtonStyle.Primary" Variant="@Variant" Size="@Size"
+                Click="@(() => NavigateToTab("overview"))"/>
+            </div>
+            <div class="menu-button-wrapper">
+                <BButton Text="Participation Stats" Icon="groups" ButtonStyle="ButtonStyle.Light" Variant="@Variant" Size="@Size"
+                Click="@(() => NavigateToTab("participation"))"/>
+            </div>
+        </RadzenPanelMenuItem>
+
+        <RadzenPanelMenuItem Text="Question Results" Icon="assessment" Expanded="true">
+            @if (Questions != null)
+            {
+                foreach (var question in Questions)
+                {
+                    <div class="menu-button-wrapper">
+                        <BButton Text="@GetShortQuestionText(question)" Icon="@GetIconForQuestionType(question.Type)"
+                        ButtonStyle="ButtonStyle.Secondary" Variant="@Variant" Size="@Size"
+                        Click="@(() => NavigateToQuestion(question.Id))"/>
+                    </div>
+                }
+            }
+        </RadzenPanelMenuItem>
+
+        <RadzenPanelMenuItem Text="Export Options" Icon="download" Expanded="true">
+            <div class="menu-button-wrapper">
+                <BButton Text="HTML Report" Icon="html" ButtonStyle="ButtonStyle.Success" Variant="@Variant" Size="@Size"
+                Click="@(() => DownloadReport("Html"))" IsBusy="@IsBusy"/>
+            </div>
+            <div class="menu-button-wrapper">
+                <BButton Text="CSV Export" Icon="table_view" ButtonStyle="ButtonStyle.Info" Variant="@Variant" Size="@Size"
+                Click="@(() => DownloadReport("Csv"))" IsBusy="@IsBusy"/>
+            </div>
+        </RadzenPanelMenuItem>
+    </RadzenPanelMenuItem>
+}
+else
+{
+    <RadzenPanelMenuItem Text="Loading Results..." Icon="hourglass_empty"/>
+}
+
+@code {
+
+    [Parameter]
+    public Guid SurveyId { get; set; }
+
+    private Survey Survey { get; set; }
+    private List<Question> Questions => Survey.Questions;
+    private List<Response> Responses => Survey.Responses;
+    private Variant Variant => Variant.Text;
+    private ButtonSize Size => ButtonSize.Small;
+    private bool IsBusy { get; set; }
+    private CustomAuthStateProvider _authStateProvider;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _authStateProvider = CustomAuthStateProvider.Get(AuthStateProvider);
+        _authStateProvider.SurveyNavigationStateChanged += HandleSurveyNavigationStateChanged;
+        _authStateProvider.DataGridStateChanged += HandleDataGridStateChanged;
+        _authStateProvider.ResultsTabChanged += HandleResultsTabChanged;
+
+        var survey = _authStateProvider.GetCurrentSurvey();
+        Survey = await SurveyService.GetSurveyResults(survey.Id);
+    }
+
+    private void HandleResultsTabChanged(ResultsTab tab, int questionId)
+    {
+        // Update UI when tab changes
+        StateHasChanged();
+    }
+
+    private void HandleSurveyNavigationStateChanged(Survey survey, int pageIndex)
+    {
+        if (survey != null && (Survey == null || Survey.Id != survey.Id))
+        {
+            Survey = survey;
+            StateHasChanged();
+        }
+    }
+
+    private void HandleDataGridStateChanged()
+    {
+        _ = HandleDataGridStateChangedAsync();
+    }
+
+    private async Task HandleDataGridStateChangedAsync()
+    {
+        await InvokeAsync(async () =>
+        {
+            if (Survey != null)
+                Survey = await SurveyService.GetSurveyResults(Survey.Id);
+            StateHasChanged();
+        });
+    }
+
+    private string GetShortQuestionText(Question question)
+    {
+        var text = question.Text ?? "";
+        var maxLength = 25;
+        if (text.Length <= maxLength)
+            return text;
+        return text.Substring(0, maxLength) + "...";
+    }
+
+    private string GetIconForQuestionType(QuestionTypes type)
+    {
+        return type switch
+        {
+            QuestionTypes.Text           => "gesture",
+            QuestionTypes.Rating         => "star",
+            QuestionTypes.SingleChoice   => "check",
+            QuestionTypes.MultipleChoice => "done_all",
+            _                            => "help"
+        };
+    }
+
+    private void NavigateToTab(string tabName)
+    {
+        if (tabName == "overview")
+        {
+            _authStateProvider.SetCurrentResultsTab(ResultsTab.Overview);
+        }
+        else if (tabName == "participation")
+        {
+            _authStateProvider.SetCurrentResultsTab(ResultsTab.Participation);
+        }
+    }
+
+    private void NavigateToQuestion(int questionId)
+    {
+        _authStateProvider.SetCurrentResultsTab(ResultsTab.Question, questionId);
+    }
+
+    private async Task DownloadReport(string reportType)
+    {
+        IsBusy = true;
+        try
+        {
+            var isDarkTheme = ThemeService.Theme == "material-dark";
+            var type = Enum.Parse<ReportType>(reportType, true);
+            var data = type switch
+            {
+                ReportType.Html => await ReportBuilder.GenerateHtmlReportAsync(Survey, Responses, isDarkTheme),
+                ReportType.Csv  => await ReportBuilder.GenerateCsvAsync(Survey, Responses),
+                var _           => throw new ArgumentOutOfRangeException(nameof(type), type, null)
+            };
+            await JSUtilityService.DownloadHtmlFile($"{Survey.Title} - Report", type.ToString().ToLower(), data);
+        }
+        catch (Exception ex)
+        {
+            NotificationService.NotifyFromException(ex);
+        }
+        finally
+        {
+            IsBusy = false;
+            StateHasChanged();
+        }
+    }
+
+    public void Dispose()
+    {
+        if (_authStateProvider != null)
+        {
+            _authStateProvider.SurveyNavigationStateChanged -= HandleSurveyNavigationStateChanged;
+            _authStateProvider.DataGridStateChanged -= HandleDataGridStateChanged;
+            _authStateProvider.ResultsTabChanged -= HandleResultsTabChanged;
+        }
+    }
+
+}

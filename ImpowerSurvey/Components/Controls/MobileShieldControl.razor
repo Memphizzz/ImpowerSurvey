@@ -1,0 +1,63 @@
+@inject DialogService DialogService
+
+<style>
+    .mobile-shield-control {
+        display: flex;
+        align-items: center;
+        margin: 0;
+    }
+    
+    .mobile-shield-button {
+        background-color: green;
+        border-radius: 4px;
+        padding: 4px 8px;
+        font-size: 0.8rem;
+        color: white;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-left: 0.5rem;
+    }
+    
+    .mobile-shield-icon {
+        font-size: 2.5rem;
+        color: var(--rz-primary);
+    }
+    
+    .mobile-shield-verified {
+        margin: 0;
+        font-weight: bold;
+        font-size: 0.8rem;
+    }
+    
+    .mobile-shield-click {
+        font-size: 0.6rem;
+        margin-top: -2px;
+    }
+</style>
+
+<div class="mobile-shield-control" @onclick="OpenShieldPopup">
+    <RadzenIcon Icon="encrypted" class="mobile-shield-icon" />
+    <div class="mobile-shield-button">
+        <span class="mobile-shield-verified">@Constants.SHIELD.VerifiedText</span>
+        <span class="mobile-shield-click">@Constants.SHIELD.MobileTapText</span>
+    </div>
+</div>
+
+@code {
+    private void OpenShieldPopup()
+    {
+        DialogService.OpenAsync<MobileShieldPopup>(Constants.SHIELD.MobileDialogTitle, null,
+                                                   new DialogOptions
+                                                   {
+                                                       ShowClose = true,
+                                                       ShowTitle = true,
+                                                       Width = "100%",
+                                                       Height = "100%",
+                                                       CssClass = "mobile-dialog",
+                                                       AutoFocusFirstElement = false,
+                                                       CloseDialogOnEsc = true,
+                                                       CloseDialogOnOverlayClick = false
+                                                   });
+    }
+}

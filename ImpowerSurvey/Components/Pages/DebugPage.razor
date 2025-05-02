@@ -1,0 +1,60 @@
+@page "/admin/debug"
+@using ImpowerSurvey.Services
+@using ImpowerSurvey.Components.Controls
+@using ImpowerSurvey.Components.Model
+@using ImpowerSurvey.Components.Utilities
+@inject SurveyDbContext DbContext
+@inject NavigationManager NavigationManager
+@inject NotificationService NotificationService
+@inject DialogService DialogService
+@inject SurveyService SurveyService
+@inject DelayedSubmissionService DelayedSubmissionService
+@inject SurveyCodeService SurveyCodeService
+
+<PageTitle>@nameof(ImpowerSurvey)</PageTitle>
+
+<CascadingAuthenticationState>
+    <AuthorizeView Roles="@nameof(Roles.Admin)">
+        <NotAuthorized>
+            <NotAuthorizedControl LogError="true"/>
+        </NotAuthorized>
+        <Authorized>
+            <HeaderControl Icon="bug_report" Title="Debug Tools" MarginBottomPx="15"/>
+            
+            <RadzenCard Style="margin-bottom: 20px;">
+                <RadzenText TextStyle="TextStyle.H5">Survey ID Generator Test</RadzenText>
+                <RadzenButton Text="Generate 100 Random IDs" Icon="casino" Click="@GenerateRandomIds" ButtonStyle="ButtonStyle.Primary" />
+                
+                @if(HumanReadableIds?.Any() == true)
+                {
+                    <div style="margin-top: 20px; background-color: rgba(0,0,0,0.05); padding: 10px; border-radius: 5px;">
+                        <RadzenText TextStyle="TextStyle.Subtitle1">Generated IDs:</RadzenText>
+                        <ul style="list-style-type: none; padding-left: 5px;">
+                            @foreach (var id in HumanReadableIds)
+                            {
+                                <li style="margin-bottom: 5px; padding: 5px; border-radius: 4px; background-color: rgba(0,0,0,0.03);">
+                                    <strong>@id</strong>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                }
+            </RadzenCard>
+        </Authorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+
+@code {
+    private List<string> HumanReadableIds { get; set; }
+    
+    private void GenerateRandomIds()
+    {
+        HumanReadableIds = [];
+        
+        for (var i = 0; i < 100; i++)
+        {
+            var guid = Guid.NewGuid();
+            HumanReadableIds.Add(guid.ToHumanReadableId());
+        }
+    }
+}

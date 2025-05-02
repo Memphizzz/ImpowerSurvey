@@ -1,0 +1,316 @@
+@using ImpowerSurvey.Components.Controls
+@using ImpowerSurvey.Components.Model
+@using ImpowerSurvey.Components.Utilities
+@using ImpowerSurvey.Services
+@implements IDisposable
+@inject SurveyService SurveyService
+@inject DialogService DialogService
+@inject NavigationManager NavigationManager
+@inject NotificationService NotificationService
+@inject AuthenticationStateProvider AuthStateProvider
+
+@if (Survey != null)
+{
+    <RadzenPanelMenuItem Icon="info" Style="font-weight: bold; color: var(--rz-primary);" Text="@(Survey.Id == Guid.Empty ? "New Survey" : Survey.Title)" Expanded="true">
+        <RadzenStack Gap="0.5rem" Style="margin: 8px;">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                @if (Survey.Id == Guid.Empty)
+                {
+                    <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="New" Style="width: 65px;"/>
+                    <RadzenText TextStyle="TextStyle.Caption" Style="margin: 0px;">ID: n/a</RadzenText>
+                }
+                else
+                {
+                    <RadzenBadge BadgeStyle="@(Survey.State.GetSurveyStateBadgeStyle())" Text="@Survey.State.ToString()" Style="width: 75px;"/>
+                    <RadzenText TextStyle="TextStyle.Caption" Style="margin: 0px;">@((MarkupString)Survey.Id.GetIdBlock())</RadzenText>
+                }
+            </RadzenStack>
+        </RadzenStack>
+        <RadzenPanelMenuItem Text="Survey Actions" Icon="build" Expanded="true">
+            @if (IsEditing || IsCreating)
+            {
+                <div class="menu-button-wrapper">
+                    <RadzenButton Text="Save Changes" Icon="save" ButtonStyle="ButtonStyle.Primary" Variant="@Variant" Size="@Size"
+                                  Click="@(() => HandleEditorAction(SurveyEditorAction.SaveChanges))" Disabled="@IsDisabled"/>
+                </div>
+                <div class="menu-button-wrapper">
+                    <RadzenButton Text="Add Question" Icon="add" ButtonStyle="ButtonStyle.Success" Variant="@Variant" Size="@Size"
+                                  Click="@(() => HandleEditorAction(SurveyEditorAction.AddQuestion))" Disabled="@IsDisabled"/>
+                </div>
+                <div class="menu-button-wrapper">
+                    <RadzenButton Text="Cancel Editing" Icon="cancel" ButtonStyle="ButtonStyle.Warning" Variant="@Variant" Size="@Size"
+                                  Click="@(() => NavigationManager.NavigateTo("/surveys"))" Disabled="@IsDisabled"/>
+                </div>
+            }
+            else
+            {
+                @if (Survey.State == SurveyStates.Created)
+                {
+                    <div class="menu-button-wrapper">
+                        <RadzenButton Text="Edit Survey" Icon="edit" ButtonStyle="ButtonStyle.Primary" Variant="@Variant" Size="@Size"
+                                      Click="@(() => NavigationManager.NavigateTo($"/edit-survey/{Survey.Id}"))" Disabled="@IsDisabled"/>
+                    </div>
+                    <div class="menu-button-wrapper">
+                        <RadzenButton Text="Start Survey" Icon="play_arrow" ButtonStyle="ButtonStyle.Success" Variant="@Variant" Size="@Size"
+                                      Click="@(() => KickOffSurvey(Survey))" Disabled="@IsDisabled"/>
+                    </div>
+                }
+
+                <div class="menu-button-wrapper">
+                    <RadzenButton Text="Duplicate Survey" Icon="content_copy" ButtonStyle="ButtonStyle.Secondary" Variant="@Variant" Size="@Size"
+                                  Click="@(() => DuplicateSurvey(Survey))" Disabled="@IsDisabled"/>
+                </div>
+                @if (Survey.State == SurveyStates.Running)
+                {
+                    <div class="menu-button-wrapper">
+                        <RadzenButton Text="Close Survey" Icon="stop_circle" ButtonStyle="ButtonStyle.Warning" Variant="@Variant" Size="@Size"
+                                      Click="@(() => CloseSurvey(Survey))" Disabled="@IsDisabled"/>
+                    </div>
+                }
+
+                @if (Survey.State != SurveyStates.Running)
+                {
+                    <div class="menu-button-wrapper">
+                        <RadzenButton Text="Delete Survey" Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="@Variant" Size="@Size"
+                                      Click="@(() => DeleteSurvey(Survey))" Disabled="@IsDisabled"/>
+                    </div>
+                }
+            }
+        </RadzenPanelMenuItem>
+        @if (Survey.State != SurveyStates.Created && Survey.State != SurveyStates.Scheduled)
+        {
+            <RadzenPanelMenuItem Text="Survey Data" Icon="assessment" Expanded="true">
+                <div class="menu-button-wrapper">
+                    <RadzenButton Text="View Participants" Icon="groups" ButtonStyle="ButtonStyle.Primary" Variant="@Variant" Size="@Size"
+                                  Click="@(() => ShowParticipation(Survey))" Disabled="@IsDisabled"/>
+                </div>
+                <div class="menu-button-wrapper">
+                    <RadzenButton Text="View Results" Icon="monitoring" ButtonStyle="ButtonStyle.Success" Variant="@Variant" Size="@Size"
+                                  Click="@(() => NavigationManager.NavigateTo($"/survey-results/{Survey.Id}"))" Disabled="@IsDisabled"/>
+                </div>
+                @if (Survey.State == SurveyStates.Running)
+                {
+                    <div class="menu-button-wrapper">
+                        <RadzenButton Text="Entry Codes" Icon="key" ButtonStyle="ButtonStyle.Info" Variant="@Variant" Size="@Size"
+                                      Click="@(() => ShowEntryCodeDialog(Survey))" Disabled="@IsDisabled"/>
+                    </div>
+                    <div class="menu-button-wrapper">
+                        <RadzenButton Text="Completion Codes" Icon="qr_code"ButtonStyle="ButtonStyle.Success" Variant="@Variant" Size="@Size"
+                                      Click="@(() => ShowCompletionCodeDialog(Survey))" Disabled="@IsDisabled"/>
+                    </div>
+                }
+            </RadzenPanelMenuItem>
+        }
+    </RadzenPanelMenuItem>
+}
+else
+{
+    <RadzenPanelMenuItem Text="No Survey Selected" Icon="info"/>
+}
+
+@code {
+    private Survey Survey { get; set; }
+    private Variant Variant => Variant.Text;
+    private ButtonSize Size => ButtonSize.Small;
+    private CustomAuthStateProvider _authStateProvider;
+    private bool IsEditing => NavigationManager.Uri.Contains("/edit-survey/");
+    private bool IsCreating => NavigationManager.Uri.Contains("/create-survey");
+    private bool IsDisabled { get; set; }
+    public string BusyText { get; set; } = Constants.UI.Busy;
+
+    protected override void OnInitialized()
+    {
+        _authStateProvider = CustomAuthStateProvider.Get(AuthStateProvider);
+        _authStateProvider.SurveyNavigationStateChanged += HandleSurveyNavigationStateChanged;
+        _authStateProvider.DataGridStateChanged += HandleDataGridStateChanged;
+        Survey = _authStateProvider.GetCurrentSurvey();
+    }
+
+    private void HandleSurveyNavigationStateChanged(Survey survey, int pageIndex)
+    {
+        if (Survey == null || Survey.Id != survey?.Id)
+        {
+            Survey = survey;
+            StateHasChanged();
+        }
+    }
+
+    private void HandleDataGridStateChanged()
+    {
+        _ = HandleDataGridStateChangedAsync();
+    }
+
+    private async Task HandleDataGridStateChangedAsync()
+    {
+        await InvokeAsync(async () =>
+        {
+            if (Survey != null)
+                Survey = await SurveyService.GetSurveyByIdAsync(Survey.Id);
+            StateHasChanged();
+        });
+    }
+
+    private async Task HandleEditorAction(SurveyEditorAction action, object parameter = null)
+    {
+        IsDisabled = true;
+        try
+        {
+            await _authStateProvider.RequestEditorAction(action, parameter);
+        }
+        finally
+        {
+            IsDisabled = false;
+            StateHasChanged();
+        }
+    }
+
+    public void Dispose()
+    {
+        if (_authStateProvider != null)
+        {
+            _authStateProvider.SurveyNavigationStateChanged -= HandleSurveyNavigationStateChanged;
+            _authStateProvider.DataGridStateChanged -= HandleDataGridStateChanged;
+        }
+    }
+
+    private async Task KickOffSurvey(Survey survey)
+    {
+        IsDisabled = true;
+        try
+        {
+            if (survey.State != SurveyStates.Created)
+                return;
+            var result = await DialogService.OpenAsync<StartSurveyDialog>("Survey Options",
+                                                                          new Dictionary<string, object> { { "SurveyId", survey.Id } },
+                                                                          new DialogOptions { AutoFocusFirstElement = true, CloseDialogOnEsc = true, CloseDialogOnOverlayClick = true, ShowClose = true });
+            if (result is true)
+                _authStateProvider.NotifyDataGridStateChanged();
+        }
+        finally
+        {
+            IsDisabled = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ShowEntryCodeDialog(Survey survey)
+    {
+        IsDisabled = true;
+        try
+        {
+            await DialogService.OpenAsync<EntryCodeControl>("Entry Codes",
+                                                            new Dictionary<string, object> { { "Survey", survey } },
+                                                            new DialogOptions { AutoFocusFirstElement = true, CloseDialogOnEsc = true, CloseDialogOnOverlayClick = true, ShowClose = true });
+        }
+        finally
+        {
+            IsDisabled = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ShowCompletionCodeDialog(Survey survey)
+    {
+        IsDisabled = true;
+        try
+        {
+            await DialogService.OpenAsync<CompletionCodeControl>("Completion Codes",
+                                                                 new Dictionary<string, object> { { "Survey", survey } },
+                                                                 new DialogOptions { AutoFocusFirstElement = true, CloseDialogOnEsc = true, CloseDialogOnOverlayClick = true, ShowClose = true });
+        }
+        finally
+        {
+            IsDisabled = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ShowParticipation(Survey survey)
+    {
+        IsDisabled = true;
+        try
+        {
+            await DialogService.OpenAsync<ParticipationDialog>("Survey Participation",
+                                                               new Dictionary<string, object> { { "SurveyId", survey.Id } },
+                                                               new DialogOptions { AutoFocusFirstElement = true, CloseDialogOnEsc = true, CloseDialogOnOverlayClick = true, ShowClose = true });
+        }
+        finally
+        {
+            IsDisabled = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CloseSurvey(Survey survey)
+    {
+        IsDisabled = true;
+        try
+        {
+            var choice = await DialogService.Confirm(string.Format(Constants.Survey.CloseWarning, survey.Title),
+                                                     "Warning",
+                                                     new ConfirmOptions { OkButtonText = "Yes, I'm sure", CancelButtonText = "Cancel" });
+            if (choice.HasValue && choice.Value)
+            {
+                var r = await SurveyService.CloseSurvey(survey.Id);
+                NotificationService.NotifyFromServiceResult(r);
+                _authStateProvider.NotifyDataGridStateChanged();
+            }
+        }
+        finally
+        {
+            IsDisabled = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeleteSurvey(Survey survey)
+    {
+        IsDisabled = true;
+        try
+        {
+            var choice = await DialogService.Confirm(Constants.Survey.DeleteWarning1,
+                                                     "Warning",
+                                                     new ConfirmOptions { OkButtonText = "Yes, I'm sure", CancelButtonText = "Cancel" });
+            if (choice.HasValue && choice.Value)
+            {
+                var confirm = await DialogService.Confirm(Constants.Survey.DeleteWarning2,
+                                                          "Final Warning",
+                                                          new ConfirmOptions { OkButtonText = "I said, YES!", CancelButtonText = "Get me out of here!" });
+                if (confirm.HasValue && confirm.Value)
+                {
+                    var r = await SurveyService.DeleteSurvey(survey.Id);
+                    NotificationService.NotifyFromServiceResult(r);
+                    _authStateProvider.NotifyDataGridStateChanged();
+                }
+            }
+        }
+        finally
+        {
+            IsDisabled = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DuplicateSurvey(Survey survey)
+    {
+        IsDisabled = true;
+        try
+        {
+            var choice = await DialogService.Confirm($"Are you sure you want to duplicate Survey<br>'{survey.Title}'?",
+                                                     "Duplicate Survey",
+                                                     new ConfirmOptions { OkButtonText = "Yes, I'm sure", CancelButtonText = "Cancel" });
+            if (choice.HasValue && choice.Value)
+            {
+                var r = await SurveyService.DuplicateSurvey(survey.Id);
+                NotificationService.NotifyFromServiceResult(r);
+                _authStateProvider.NotifyDataGridStateChanged();
+            }
+        }
+        finally
+        {
+            IsDisabled = false;
+            StateHasChanged();
+        }
+    }
+
+}

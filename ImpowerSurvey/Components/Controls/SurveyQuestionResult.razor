@@ -1,0 +1,437 @@
+@using ImpowerSurvey.Components.Model
+
+<RadzenRow>
+    <RadzenColumn Size="12" SizeMD="8">
+        <RadzenText TextStyle="TextStyle.H5">@Question.Text</RadzenText>
+    </RadzenColumn>
+    <RadzenColumn Size="12" SizeMD="4" class="text-right">
+        <RadzenBadge BadgeStyle="BadgeStyle.Info" Text="@($"{TotalResponses} Responses")"/>
+        <RadzenBadge BadgeStyle="BadgeStyle.Secondary" Text="@Question.Type.ToString()"/>
+    </RadzenColumn>
+</RadzenRow>
+
+@switch (Question.Type)
+{
+    case QuestionTypes.Text:
+        <RadzenRow Class="mb-3">
+            <RadzenColumn Size="12">
+                <RadzenDataGrid Data="@TextResponses" AllowPaging="true" PageSize="5" AllowSorting="true">
+                    <Columns>
+                        <RadzenDataGridColumn TItem="TextResponse" Property="Index" Title="#" Width="60px" TextAlign="TextAlign.Center"/>
+                        <RadzenDataGridColumn TItem="TextResponse" Property="Response" Title="Response"/>
+                    </Columns>
+                </RadzenDataGrid>
+            </RadzenColumn>
+        </RadzenRow>
+        <RadzenRow>
+            <RadzenColumn Size="12">
+                <RadzenAccordion>
+                    <Items>
+                        <RadzenAccordionItem Text="Text Responses" Icon="format_quote">
+                            @foreach (var response in TextResponses)
+                            {
+                                <RadzenCard Style="background: var(--rz-base); margin-top: 15px;">
+                                    <RadzenRow>
+                                        <RadzenColumn Size="1">
+                                            <RadzenBadge BadgeStyle="BadgeStyle.Light" Text="@response.Index.ToString()"/>
+                                        </RadzenColumn>
+                                        <RadzenColumn Size="11">
+                                            @response.Response
+                                        </RadzenColumn>
+                                    </RadzenRow>
+                                </RadzenCard>
+                            }
+                        </RadzenAccordionItem>
+                    </Items>
+                </RadzenAccordion>
+            </RadzenColumn>
+        </RadzenRow>
+        break;
+
+    case QuestionTypes.Rating:
+        <RadzenTabs>
+            <Tabs>
+                <RadzenTabsItem Text="Dashboard" Icon="dashboard">
+                    <RadzenRow>
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenCard>
+                                <RadzenText TextStyle="TextStyle.Subtitle1">Response Distribution</RadzenText>
+                                <RadzenChart ColorScheme="ColorScheme.Pastel" Style="height: 300px">
+                                    <RadzenPieSeries Data="@RatingDescriptions" CategoryProperty="Description" ValueProperty="Count" Title="Response Distribution">
+                                        <RadzenSeriesDataLabels Visible="true"/>
+                                    </RadzenPieSeries>
+                                    <RadzenLegend Position="LegendPosition.Bottom"/>
+                                </RadzenChart>
+                            </RadzenCard>
+                        </RadzenColumn>
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenCard>
+                                <RadzenText TextStyle="TextStyle.Subtitle1">Rating Summary</RadzenText>
+                                <RadzenRow>
+                                    <RadzenColumn Size="6">
+                                        <RadzenStack>
+                                            <RadzenText TextStyle="TextStyle.Body1">Average Rating:</RadzenText>
+                                            <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="@($"{AverageRating:F1}")" Style="font-size: 1.5rem"/>
+                                        </RadzenStack>
+                                    </RadzenColumn>
+                                    <RadzenColumn Size="6">
+                                        <RadzenStack>
+                                            <RadzenText TextStyle="TextStyle.Body1">Most Common:</RadzenText>
+                                            <RadzenBadge BadgeStyle="BadgeStyle.Primary" Text="@MostCommonRating" Style="font-size: 1.5rem"/>
+                                        </RadzenStack>
+                                    </RadzenColumn>
+                                </RadzenRow>
+                                <RadzenDataGrid Data="@RatingDescriptions" AllowSorting="true" Style="margin-top: 20px">
+                                    <Columns>
+                                        <RadzenDataGridColumn TItem="RatingDescription" Property="Value" Title="Value" Width="60px" TextAlign="TextAlign.Center"/>
+                                        <RadzenDataGridColumn TItem="RatingDescription" Property="Description" Title="Description"/>
+                                        <RadzenDataGridColumn TItem="RatingDescription" Property="Count" Title="Count" Width="80px" TextAlign="TextAlign.Center"/>
+                                        <RadzenDataGridColumn TItem="RatingDescription" Property="Percentage" Title="%" Width="80px" TextAlign="TextAlign.Center">
+                                            <Template Context="data">
+                                                @($"{(double)data.Percentage:F1}%")
+                                            </Template>
+                                        </RadzenDataGridColumn>
+                                    </Columns>
+                                </RadzenDataGrid>
+                            </RadzenCard>
+                        </RadzenColumn>
+                    </RadzenRow>
+                </RadzenTabsItem>
+                <RadzenTabsItem Text="Charts" Icon="bar_chart">
+                    <RadzenRow>
+                        <RadzenColumn Size="12" SizeLG="6">
+                            <RadzenCard>
+                                <RadzenText TextStyle="TextStyle.Subtitle1">Bar Chart</RadzenText>
+                                <RadzenChart ColorScheme="ColorScheme.Pastel">
+                                    <RadzenBarSeries Data="@RatingCounts" CategoryProperty="Rating" ValueProperty="Count" Title="Responses">
+                                        <RadzenSeriesDataLabels Visible="true"/>
+                                    </RadzenBarSeries>
+                                    <RadzenCategoryAxis Min="0" Max="5">
+                                        <RadzenAxisTitle Text="Rating"/>
+                                    </RadzenCategoryAxis>
+                                    <RadzenValueAxis Min="0">
+                                        <RadzenAxisTitle Text="Number of Responses"/>
+                                    </RadzenValueAxis>
+                                </RadzenChart>
+                            </RadzenCard>
+                        </RadzenColumn>
+                        <RadzenColumn Size="12" SizeLG="6">
+                            <RadzenCard>
+                                <RadzenText TextStyle="TextStyle.Subtitle1">Area Chart</RadzenText>
+                                <RadzenChart ColorScheme="ColorScheme.Pastel">
+                                    <RadzenAreaSeries Data="@RatingDescriptions.AsEnumerable().Reverse().ToList()" CategoryProperty="Description" ValueProperty="Count" LineType="LineType.Solid" Title="Responses">
+                                        <RadzenSeriesDataLabels Visible="true"/>
+                                    </RadzenAreaSeries>
+                                </RadzenChart>
+                            </RadzenCard>
+                        </RadzenColumn>
+                    </RadzenRow>
+                </RadzenTabsItem>
+                <RadzenTabsItem Text="Detail View" Icon="list">
+                    <RadzenListBox Data="@RatingDescriptions" TValue="RatingDescription" Style="width: 100%;">
+                        <Template Context="rating">
+                            <RadzenRow AlignItems="AlignItems.Center">
+                                <RadzenColumn Size="6">
+                                    <RadzenText TextStyle="TextStyle.Body1">
+                                        @rating.Value: @rating.Description
+                                    </RadzenText>
+                                </RadzenColumn>
+                                <RadzenColumn Size="2">
+                                    <RadzenButton Text="@($"{rating.Percentage:F1}%")"
+                                                  Style="@($"background-color: {GetColorForRating(rating.Value)}; color: white; width: 100px;")"/>
+                                </RadzenColumn>
+                                <RadzenColumn Size="2">
+                                    <RadzenText TextStyle="TextStyle.Body1">
+                                        @rating.Count responses
+                                    </RadzenText>
+                                </RadzenColumn>
+                                <RadzenColumn Size="2">
+                                    <RadzenProgressBar Value="@rating.Percentage" Style="height: 20px;"/>
+                                </RadzenColumn>
+                            </RadzenRow>
+                        </Template>
+                    </RadzenListBox>
+                </RadzenTabsItem>
+            </Tabs>
+        </RadzenTabs>
+        break;
+
+    case QuestionTypes.SingleChoice:
+        <RadzenRow>
+            <RadzenColumn Size="12" SizeMD="6">
+                <RadzenCard>
+                    <RadzenText TextStyle="TextStyle.Subtitle1">Response Distribution</RadzenText>
+                    <RadzenChart ColorScheme="ColorScheme.Pastel" Style="height: 300px">
+                        <RadzenPieSeries Data="@ChoiceResponses" CategoryProperty="Choice" ValueProperty="Count" Title="Response Distribution">
+                            <RadzenSeriesDataLabels Visible="true"/>
+                        </RadzenPieSeries>
+                        <RadzenLegend Position="LegendPosition.Bottom"/>
+                    </RadzenChart>
+                </RadzenCard>
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="6">
+                <RadzenCard>
+                    <RadzenText TextStyle="TextStyle.Subtitle1">Choices Summary</RadzenText>
+                    <RadzenRow>
+                        <RadzenColumn Size="6">
+                            <RadzenStack>
+                                <RadzenText TextStyle="TextStyle.Body1">Total Responses:</RadzenText>
+                                <RadzenBadge BadgeStyle="BadgeStyle.Info" Text="@TotalResponses.ToString()" Style="font-size: 1.5rem"/>
+                            </RadzenStack>
+                        </RadzenColumn>
+                        <RadzenColumn Size="6">
+                            <RadzenStack>
+                                <RadzenText TextStyle="TextStyle.Body1">Most Common:</RadzenText>
+                                <RadzenBadge BadgeStyle="BadgeStyle.Primary" Text="@(ChoiceResponses.OrderByDescending(c => c.Count).FirstOrDefault()?.Choice ?? "None")" Style="font-size: 1.5rem"/>
+                            </RadzenStack>
+                        </RadzenColumn>
+                    </RadzenRow>
+                    <RadzenDataGrid Data="@ChoiceResponses" AllowSorting="true" Style="margin-top: 20px">
+                        <Columns>
+                            <RadzenDataGridColumn TItem="ChoiceResponse" Property="Choice" Title="Choice"/>
+                            <RadzenDataGridColumn TItem="ChoiceResponse" Property="Count" Title="Count" Width="80px" TextAlign="TextAlign.Center"/>
+                            <RadzenDataGridColumn TItem="ChoiceResponse" Property="Percentage" Title="%" Width="80px" TextAlign="TextAlign.Center">
+                                <Template Context="data">
+                                    @($"{(double)data.Percentage:F1}%")
+                                </Template>
+                            </RadzenDataGridColumn>
+                        </Columns>
+                    </RadzenDataGrid>
+                </RadzenCard>
+            </RadzenColumn>
+        </RadzenRow>
+        <RadzenRow Class="mt-3">
+            <RadzenColumn Size="12">
+                <RadzenCard>
+                    <RadzenText TextStyle="TextStyle.Subtitle1">Bar Chart</RadzenText>
+                    <RadzenChart ColorScheme="ColorScheme.Pastel">
+                        <RadzenBarSeries Data="@ChoiceResponses" CategoryProperty="Choice" ValueProperty="Count" Title="Responses">
+                            <RadzenSeriesDataLabels Visible="true"/>
+                        </RadzenBarSeries>
+                        <RadzenCategoryAxis>
+                            <RadzenAxisTitle Text="Choice"/>
+                        </RadzenCategoryAxis>
+                        <RadzenValueAxis Min="0">
+                            <RadzenAxisTitle Text="Number of Responses"/>
+                        </RadzenValueAxis>
+                    </RadzenChart>
+                </RadzenCard>
+            </RadzenColumn>
+        </RadzenRow>
+        break;
+
+    case QuestionTypes.MultipleChoice:
+        <RadzenRow>
+            <RadzenColumn Size="12" SizeMD="6">
+                <RadzenCard>
+                    <RadzenText TextStyle="TextStyle.Subtitle1">Response Distribution</RadzenText>
+                    <RadzenChart ColorScheme="ColorScheme.Pastel" Style="height: 300px">
+                        <RadzenBarSeries Data="@ChoiceResponses.OrderByDescending(c => c.Count)" CategoryProperty="Choice" ValueProperty="Count" Title="Response Distribution">
+                            <RadzenSeriesDataLabels Visible="true"/>
+                        </RadzenBarSeries>
+                        <RadzenCategoryAxis>
+                            <RadzenAxisTitle Text="Choice"/>
+                        </RadzenCategoryAxis>
+                        <RadzenValueAxis Min="0">
+                            <RadzenAxisTitle Text="Number of Selections"/>
+                        </RadzenValueAxis>
+                    </RadzenChart>
+                </RadzenCard>
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="6">
+                <RadzenCard>
+                    <RadzenText TextStyle="TextStyle.Subtitle1">Choices Summary</RadzenText>
+                    <RadzenRow>
+                        <RadzenColumn Size="6">
+                            <RadzenStack>
+                                <RadzenText TextStyle="TextStyle.Body1">Total Submissions:</RadzenText>
+                                <RadzenBadge BadgeStyle="BadgeStyle.Info" Text="@TotalResponses.ToString()" Style="font-size: 1.5rem"/>
+                            </RadzenStack>
+                        </RadzenColumn>
+                        <RadzenColumn Size="6">
+                            <RadzenStack>
+                                <RadzenText TextStyle="TextStyle.Body1">Total Selections:</RadzenText>
+                                <RadzenBadge BadgeStyle="BadgeStyle.Primary" Text="@ChoiceResponses.Sum(c => c.Count).ToString()" Style="font-size: 1.5rem"/>
+                            </RadzenStack>
+                        </RadzenColumn>
+                    </RadzenRow>
+                    <RadzenDataGrid Data="@ChoiceResponses" AllowSorting="true" Style="margin-top: 20px">
+                        <Columns>
+                            <RadzenDataGridColumn TItem="ChoiceResponse" Property="Choice" Title="Choice"/>
+                            <RadzenDataGridColumn TItem="ChoiceResponse" Property="Count" Title="Count" Width="80px" TextAlign="TextAlign.Center"/>
+                            <RadzenDataGridColumn TItem="ChoiceResponse" Property="Percentage" Title="%" Width="80px" TextAlign="TextAlign.Center">
+                                <Template Context="data">
+                                    @($"{(double)data.Percentage:F1}%")
+                                </Template>
+                            </RadzenDataGridColumn>
+                        </Columns>
+                    </RadzenDataGrid>
+                </RadzenCard>
+            </RadzenColumn>
+        </RadzenRow>
+        break;
+}
+
+@code {
+
+    [Parameter]
+    public Question Question { get; set; }
+
+    [Parameter]
+    public List<Response> Responses { get; set; }
+
+    private List<RatingCount> RatingCounts { get; set; }
+    private List<RatingDescription> RatingDescriptions { get; set; }
+    private List<TextResponse> TextResponses { get; set; }
+    private List<ChoiceResponse> ChoiceResponses { get; set; }
+    private int TotalResponses => Responses?.Count ?? 0;
+    private int MaxCount { get; set; }
+    private double AverageRating { get; set; }
+    private string MostCommonRating { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        switch (Question.Type)
+        {
+            case QuestionTypes.Text:
+                TextResponses = Responses
+                                .Where(x => !string.IsNullOrWhiteSpace(x.Answer))
+                                .Select((r, i) => new TextResponse { Index = i + 1, Response = r.Answer })
+                                .ToList();
+                break;
+
+            case QuestionTypes.Rating:
+                RatingCounts = Responses
+                               .GroupBy(r => int.Parse(r.Answer))
+                               .Select(g => new RatingCount { Rating = g.Key, Count = g.Count() })
+                               .OrderBy(rc => rc.Rating)
+                               .ToList();
+
+                if (RatingCounts.Count > 0)
+                    MaxCount = RatingCounts.Max(rc => rc.Count);
+
+                RatingDescriptions =
+                [
+                    new RatingDescription { Value = 0, Description = "No Answer" },
+                    new RatingDescription { Value = 1, Description = "Strongly Disagree" },
+                    new RatingDescription { Value = 2, Description = "Disagree" },
+                    new RatingDescription { Value = 3, Description = "Undecided" },
+                    new RatingDescription { Value = 4, Description = "Agree" },
+                    new RatingDescription { Value = 5, Description = "Strongly Agree" }
+                ];
+
+                foreach (var description in RatingDescriptions)
+                {
+                    var count = RatingCounts.FirstOrDefault(rc => rc.Rating == description.Value)?.Count ?? 0;
+                    description.Count = count;
+                    description.Percentage = TotalResponses > 0 ? Math.Round((double)count / TotalResponses * 100, 1) : 0;
+                }
+
+                // Calculate average rating (excluding "No Answer")
+                var validRatings = RatingCounts.Where(rc => rc.Rating > 0).ToList();
+                AverageRating = validRatings.Any()
+                    ? validRatings.Sum(rc => rc.Rating * rc.Count) / (double)validRatings.Sum(rc => rc.Count)
+                    : 0;
+
+                // Find most common rating
+                var mostCommon = RatingCounts.OrderByDescending(rc => rc.Count).FirstOrDefault();
+                MostCommonRating = mostCommon != null
+                    ? RatingDescriptions.FirstOrDefault(rd => rd.Value == mostCommon.Rating)?.Description ?? "None"
+                    : "None";
+
+                RatingDescriptions.Reverse();
+                break;
+
+            case QuestionTypes.SingleChoice:
+                ProcessChoiceResponses(false);
+                break;
+
+            case QuestionTypes.MultipleChoice:
+                ProcessChoiceResponses(true);
+                break;
+        }
+    }
+
+    private void ProcessChoiceResponses(bool multipleChoice)
+    {
+        // For single choice, each response.Answer contains the chosen option
+        // For multiple choice, each response.Answer is a JSON array of selected options
+
+        var choices = new Dictionary<string, int>();
+
+        if (multipleChoice)
+        {
+            foreach (var response in Responses.Where(r => !string.IsNullOrWhiteSpace(r.Answer)))
+            {
+                try
+                {
+                    var options = response.Answer.Split(", ", StringSplitOptions.RemoveEmptyEntries);
+                    foreach (var option in options)
+                    {
+                        choices.TryAdd(option, 0);
+                        choices[option]++;
+                    }
+                }
+                catch
+                {
+                    // Handle potential deserialize errors (not valid JSON)
+                    choices.TryAdd("Error parsing", 0);
+                    choices["Error parsing"]++;
+                }
+            }
+        }
+        else
+        {
+            foreach (var response in Responses.Where(r => !string.IsNullOrWhiteSpace(r.Answer)))
+            {
+                var option = response.Answer;
+                choices.TryAdd(option, 0);
+                choices[option]++;
+            }
+        }
+
+        ChoiceResponses = choices.Select(kv => new ChoiceResponse { Choice = kv.Key, Count = kv.Value, Percentage = TotalResponses > 0 ? Math.Round((double)kv.Value / TotalResponses * 100, 1) : 0 }).OrderByDescending(c => c.Count).ToList();
+    }
+
+    private string GetColorForRating(int rating)
+    {
+        return rating switch
+        {
+            0     => "#AAAAAA", // Gray for No Answer
+            1     => "#FF4136", // Light red
+            2     => "#FF851B", // Orange
+            3     => "#FFDC00", // Yellow
+            4     => "#2ECC40", // Green
+            5     => "#3D9970", // Dark green
+            var _ => "#AAAAAA"  // Gray for any other value
+        };
+    }
+
+    private class RatingCount
+    {
+        public int Rating { get; set; }
+        public int Count { get; set; }
+    }
+
+    private class RatingDescription
+    {
+        public int Value { get; set; }
+        public string Description { get; set; }
+        public int Count { get; set; }
+        public double Percentage { get; set; }
+    }
+
+    private class TextResponse
+    {
+        public int Index { get; set; }
+        public string Response { get; set; }
+    }
+
+    private class ChoiceResponse
+    {
+        public string Choice { get; set; }
+        public int Count { get; set; }
+        public double Percentage { get; set; }
+    }
+
+}

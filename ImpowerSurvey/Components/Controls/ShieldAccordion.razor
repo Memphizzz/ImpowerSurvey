@@ -1,0 +1,38 @@
+<RadzenAccordion Multiple="true">
+    <Items>
+        <RadzenAccordionItem Text="How Your Privacy is Protected" Icon="security" Selected="true">
+            <ol style="padding-left: 1.5rem;">
+                <li><strong>Secure Transmission</strong>: Your survey responses will be encrypted and securely transmitted to our servers.</li>
+                <li><strong>Delayed Submission</strong>: Our system will hold your responses for a random period of time (between 15 and 59 minutes) before processing them.</li>
+                <li><strong>Batched Processing</strong>: Your responses will be combined with others and submitted in batches.</li>
+                <li><strong>Anonymous Storage</strong>: Once processed, your responses are stored anonymously with no connection to your identity or session.</li>
+                <li><strong>Completion Code Generation</strong>: You will receive a unique completion code generated independently of your survey responses.</li>
+            </ol>
+        </RadzenAccordionItem>
+        
+        @if (ShowSlack)
+        {
+            <RadzenAccordionItem Text="For Slack Participants" Icon="chat">
+                <p>When you submit your survey completion code via Slack, the following applies:</p>
+                <ol style="padding-left: 1.5rem;">
+                    <li><strong>Email Recording</strong>: The system does record which email address submitted a completion code.</li>
+                    <li><strong>Structural Separation</strong>: This email is stored separately and distinctly from your survey responses.</li>
+                    <li>
+                        <strong>Two Isolated Sets of Information</strong>:
+                        <ul style="padding-left: 1.5rem;">
+                            <li>Set A: Contains information about who has completed a survey, but has no access to any responses.</li>
+                            <li>Set B: Contains anonymous survey responses, but has no information about who submitted them.</li>
+                        </ul>
+                    </li>
+                    <li><strong>No Connecting Information</strong>: There is no shared identifier or mechanism that could link your email to your responses.</li>
+                </ol>
+            </RadzenAccordionItem>
+        }
+    </Items>
+</RadzenAccordion>
+
+@code
+{
+    [Parameter]
+    public bool ShowSlack { get; set; }
+}

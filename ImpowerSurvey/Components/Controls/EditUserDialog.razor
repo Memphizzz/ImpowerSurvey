@@ -1,0 +1,191 @@
+@using ImpowerSurvey.Components.Model
+@using ImpowerSurvey.Components.Utilities
+@using ImpowerSurvey.Services
+@inject SlackService SlackService
+@inject UserService UserService
+@inject NotificationService NotificationService
+@inject IJSUtilityService JSUtilityService
+
+<RadzenCard Style="min-height: 230px;">
+    @if (User == null)
+    {
+        <RadzenStack Orientation="Orientation.Horizontal" Style="@Constants.UI.StyleFlexGrowRow" JustifyContent="JustifyContent.Center">
+            <RadzenProgressBarCircular Mode="ProgressBarMode.Indeterminate" ShowValue="false"/>
+            <RadzenText Style="align-self: center;" Text="Fetching Data, please wait.."/>
+        </RadzenStack>
+    }
+    else
+    {
+        <RadzenTabs>
+            <Tabs>
+                <RadzenTabsItem Text="Info">
+                    <RadzenText>ID: @User.Id</RadzenText>
+                    <RadzenText>Name: @User.Username</RadzenText>
+                    @foreach (ParticipationTypes type in Enum.GetValues(typeof(ParticipationTypes)))
+                    {
+                        @if (!string.IsNullOrWhiteSpace(User.Emails[type]))
+                        {
+                            <RadzenText Text=@($"{type} Email: {User.Emails[type]}")/>
+                        }
+                    }
+                    <RadzenText>Role: @User.Role</RadzenText>
+                </RadzenTabsItem>
+                <RadzenTabsItem Text="Update Email">
+                    <RadzenTemplateForm @ref="@TemplateFormUpdateEmail" TItem="User" Data="@User" Submit="@OnSubmitUpdateEmail" Context="form">
+                        <RadzenStack>
+                            <RadzenFormField Text="Email Type">
+                                <RadzenDropDown @bind-Value="@SelectedParticipationType" Data="@Enum.GetValues(typeof(ParticipationTypes))"
+                                                Change="@OnParticipationTypeChanged"/>
+                            </RadzenFormField>
+                            <RadzenFormField Text="@($"{SelectedParticipationType} Email")" Style="margin-top: 5px;">
+                                <RadzenTextBox @ref="@TextBoxEmail" Name="txtEmail" @bind-Value="@CurrentEmail" Style="width: 300px;"/>
+                                <RadzenRequiredValidator Component="txtEmail" Text="" Style="position: absolute"/>
+                                <RadzenCustomValidator Component="txtEmail" Text="@ValidationMessage" Validator="@(() => SlackEmailValidator(CurrentEmail))"/>
+                            </RadzenFormField>
+                            <RadzenButton ButtonType="ButtonType.Submit" Text="Update Email" ButtonStyle="ButtonStyle.Success" IsBusy="@IsBusy"/>
+                        </RadzenStack>
+                    </RadzenTemplateForm>
+                </RadzenTabsItem>
+                <RadzenTabsItem Text="Change Password">
+                    <RadzenStack>
+                        <RadzenAlert AlertStyle="AlertStyle.Info" AllowClose="false">
+                            Generate a new password for the user.<br/>
+                            They will be asked to change it on their next login.
+                        </RadzenAlert>
+                        <RadzenButton Text="Generate New Password" Click="@GetNewPassword" ButtonStyle="ButtonStyle.Success" IsBusy="@IsBusy"/>
+                        <RadzenAlert @bind-Visible="@ShowPassword" AlertStyle="AlertStyle.Warning" ShowIcon="false" Close="() => ShowPassword = false">
+                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
+                                <RadzenText Text="@Password" Style="color: white;"/>
+                                <RadzenButton Text="Copy Password" Icon="content_copy" Click="CopyPasswordToClipboard" Size="ButtonSize.ExtraSmall"/>
+                            </RadzenStack>
+                        </RadzenAlert>
+                    </RadzenStack>
+                </RadzenTabsItem>
+            </Tabs>
+        </RadzenTabs>
+    }
+</RadzenCard>
+
+@code {
+
+    [Parameter]
+    public Guid UserID { get; set; }
+
+    private User User { get; set; }
+    private RadzenTextBox TextBoxEmail { get; set; }
+    private ParticipationTypes SelectedParticipationType { get; set; } = ParticipationTypes.Manual;
+    private string CurrentEmail { get; set; }
+    private Dictionary<ParticipationTypes, bool?> Verifications { get; } = new();
+    private string Password { get; set; }
+    private bool IsBusy { get; set; }
+    private bool ShowPassword { get; set; }
+    private RadzenTemplateForm<User> TemplateFormUpdateEmail { get; set; }
+    private string ValidationMessage { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            User = await UserService.GetUserAsync(UserID);
+            foreach (ParticipationTypes type in Enum.GetValues(typeof(ParticipationTypes)))
+            {
+                Verifications[type] = null;
+                if (!User.Emails.ContainsKey(type))
+                    User.Emails[type] = string.Empty;
+            }
+
+            CurrentEmail = User.Emails[SelectedParticipationType];
+            StateHasChanged();
+        }
+
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    private void OnParticipationTypeChanged(object value)
+    {
+        if (value is ParticipationTypes type)
+        {
+            SelectedParticipationType = type;
+            CurrentEmail = User.Emails[SelectedParticipationType];
+        }
+    }
+
+    private async Task OnSubmitUpdateEmail()
+    {
+        IsBusy = true;
+        await Task.Yield();
+
+        User.Emails[SelectedParticipationType] = CurrentEmail.ToLower();
+
+        switch (SelectedParticipationType)
+        {
+            case ParticipationTypes.Manual:
+                break;
+
+            case ParticipationTypes.Slack:
+                Verifications[ParticipationTypes.Slack] = (await SlackService.VerifyParticipants([CurrentEmail.ToLower()])).Count == 0;
+                if (Verifications[ParticipationTypes.Slack].HasValue && !Verifications[ParticipationTypes.Slack].Value)
+                {
+                    TemplateFormUpdateEmail.EditContext.NotifyFieldChanged(TemplateFormUpdateEmail.FindComponent(TextBoxEmail.Name).FieldIdentifier);
+                    IsBusy = false;
+                    return;
+                }
+
+                Verifications[ParticipationTypes.Slack] = true;
+                break;
+
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
+        
+        var result = await UserService.UpdateEmail(User.Id, User.Emails[SelectedParticipationType], SelectedParticipationType);
+        NotificationService.Notify(new NotificationMessage
+        {
+            Severity = result.Successful ? NotificationSeverity.Success : NotificationSeverity.Error,
+            Summary = result.Successful ? Constants.UI.Success : Constants.UI.Error,
+            Detail = result.Message,
+            Duration = 10
+        });
+
+        IsBusy = false;
+    }
+
+    private bool SlackEmailValidator(string currentEmail)
+    {
+        var isValidEmail = currentEmail.IsValidEmail();
+
+        if (!isValidEmail)
+        {
+            ValidationMessage = string.IsNullOrWhiteSpace(currentEmail) ? string.Empty : Constants.UI.InvalidEmailAddress;
+            Verifications[ParticipationTypes.Slack] = null;
+            return false;
+        }
+
+        if (Verifications[ParticipationTypes.Slack].HasValue && !Verifications[ParticipationTypes.Slack].Value)
+        {
+            ValidationMessage = Constants.Slack.Errors.UserNotFound;
+            Verifications[ParticipationTypes.Slack] = null;
+            return false;
+        }
+
+        ValidationMessage = string.Empty;
+        return true;
+    }
+
+    private async Task GetNewPassword()
+    {
+        var result = await UserService.ResetPassword(User.Id);
+        if (result.Successful)
+        {
+            Password = result.Data;
+            ShowPassword = true;
+        }
+    }
+
+    private async Task CopyPasswordToClipboard()
+    {
+        await JSUtilityService.CopyToClipboard(Password);
+        NotificationService.Notify(NotificationSeverity.Success, Constants.UI.Success, Constants.Users.PasswordCopiedClipboard);
+    }
+
+}

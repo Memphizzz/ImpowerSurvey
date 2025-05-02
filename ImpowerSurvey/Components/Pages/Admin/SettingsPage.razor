@@ -1,0 +1,328 @@
+@page "/admin/settings"
+@using ImpowerSurvey.Components.Model
+@using ImpowerSurvey.Services
+@using ImpowerSurvey.Components.Controls
+@inject ISettingsService SettingsService
+@inject NotificationService NotificationService
+@inject IClaudeService ClaudeService
+
+<PageTitle>@nameof(ImpowerSurvey)</PageTitle>
+
+<CascadingAuthenticationState>
+    <AuthorizeView Roles="@nameof(Roles.Admin)">
+        <NotAuthorized>
+            <NotAuthorizedControl LogError="true"/>
+        </NotAuthorized>
+        <Authorized>
+            <HeaderControl Icon="settings" Title="System Settings" MarginBottomPx="15"/>
+
+            @if (IsLoading)
+            {
+                <RadzenCard>
+                    <RadzenStack Orientation="Orientation.Horizontal" Style="@Constants.UI.StyleFlexGrowRow" JustifyContent="JustifyContent.Center">
+                        <RadzenProgressBarCircular Mode="ProgressBarMode.Indeterminate" ShowValue="false"/>
+                        <RadzenText Style="align-self: center;" Text="Loading settings..."/>
+                    </RadzenStack>
+                </RadzenCard>
+            }
+            else
+            {
+                <RadzenCard class="glass-card">
+                    <RadzenTabs>
+                        <Tabs>
+                            @foreach (var category in Categories)
+                            {
+                                <RadzenTabsItem Text="@category" Icon="@GetCategoryIcon(category)">
+                                    <RadzenCard class="mb-4">
+                                        <RadzenStack Gap="1rem">
+                                            @{
+                                                var categorySettings = Settings.Where(s => s.Category == category).OrderBy(s => s.DisplayOrder).ToList();
+                                            }
+                                            @if (categorySettings.Any())
+                                            {
+                                                foreach (var setting in categorySettings)
+                                                {
+                                                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Start" Gap="1rem">
+                                                        <div style="width: 250px;">
+                                                            <RadzenText TextStyle="TextStyle.Subtitle1">@setting.Description</RadzenText>
+                                                        </div>
+                                                        <div style="flex-grow: 1;">
+                                                            @switch (setting.Type)
+                                                            {
+                                                                case SettingType.Boolean:
+                                                                    <RadzenSwitch @bind-Value="@EditedValues[setting.Key].BoolValue"/>
+                                                                    break;
+
+                                                                case SettingType.Number:
+                                                                    <RadzenNumeric @bind-Value="@EditedValues[setting.Key].NumberValue"/>
+                                                                    break;
+
+                                                                case SettingType.Color:
+                                                                    <RadzenColorPicker @bind-Value="@EditedValues[setting.Key].StringValue"/>
+                                                                    break;
+
+                                                                case SettingType.Select:
+                                                                    @switch (setting.Key)
+                                                                    {
+                                                                        case Constants.SettingsKeys.CompanyLogoType or Constants.SettingsKeys.CompanyNameLogoType:
+                                                                            <RadzenDropDown @bind-Value="@EditedValues[setting.Key].StringValue"
+                                                                                            Data="@(new[] { "image", "svg" })"Style="width: 100%;"/>
+                                                                            break;
+
+                                                                        case Constants.SettingsKeys.ClaudeModel:
+                                                                            <RadzenDropDown @bind-Value="@EditedValues[setting.Key].StringValue"Data="@AvailableClaudeModels"Style="width: 100%;"
+                                                                                            Change="@(args => EditedValues[setting.Key].StringValue = args?.ToString())"/>
+                                                                            <small class="text-muted">Changes to AI model only take effect after server restart</small>
+                                                                            break;
+
+                                                                        default:
+                                                                            <RadzenTextBox @bind-Value="@EditedValues[setting.Key].StringValue"
+                                                                                           Style="width: 100%;"/>
+                                                                            break;
+                                                                    }
+
+                                                                    break;
+
+                                                                case SettingType.ImageUrl:
+                                                                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                                                                        <RadzenTextBox @bind-Value="@EditedValues[setting.Key].StringValue"/>
+                                                                        <RadzenImage Path="@EditedValues[setting.Key].StringValue" style="height: 40px; width: auto;"/>
+                                                                    </RadzenStack>
+                                                                    break;
+
+                                                                case SettingType.Text:
+                                                                    @if (setting.Key == Constants.SettingsKeys.CompanyLogoSvg)
+                                                                    {
+                                                                        <RadzenStack>
+                                                                            <RadzenTextArea @bind-Value="@EditedValues[setting.Key].StringValue"Rows="6"Style="width: 100%;"/>
+                                                                            <div style="height: 60px; margin-top: 8px;">
+                                                                                @((MarkupString)EditedValues[setting.Key].StringValue)
+                                                                            </div>
+                                                                        </RadzenStack>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <RadzenTextArea @bind-Value="@EditedValues[setting.Key].StringValue"Rows="3"Style="width: 100%;"/>
+                                                                    }
+
+                                                                    break;
+
+                                                                default:
+                                                                    <RadzenTextBox @bind-Value="@EditedValues[setting.Key].StringValue"Style="width: 100%;"/>
+                                                                    break;
+                                                            }
+                                                        </div>
+                                                    </RadzenStack>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                <RadzenText>No settings in this category.</RadzenText>
+                                            }
+                                        </RadzenStack>
+                                    </RadzenCard>
+
+                                    <RadzenButton Text="Save Changes"
+                                                  Icon="save"
+                                                  Click="@(() => SaveCategorySettings(category))"
+                                                  ButtonStyle="ButtonStyle.Primary"
+                                                  class="mb-3"/>
+                                </RadzenTabsItem>
+                            }
+                            
+                            <RadzenTabsItem Text="Environment Variables" Icon="monitor_heart">
+                                <RadzenCard class="mb-4">
+                                    <RadzenStack Gap="1rem">
+                                        @if (EnvironmentVariables != null && EnvironmentVariables.Any())
+                                        {
+                                            <RadzenDataGrid AllowFiltering="true" AllowColumnResize="true" AllowSorting="true" PageSize="20" AllowPaging="true" 
+                                                           Data="@EnvironmentVariables" TItem="KeyValuePair<string, string>" ColumnWidth="300px">
+                                                <Columns>
+                                                    <RadzenDataGridColumn TItem="KeyValuePair<string, string>" Property="Key" Title="Key" Width="300px" />
+                                                    <RadzenDataGridColumn TItem="KeyValuePair<string, string>" Property="Value" Title="Value" Width="600px" />
+                                                </Columns>
+                                            </RadzenDataGrid>
+                                        }
+                                        else
+                                        {
+                                            <RadzenText>No environment variables found.</RadzenText>
+                                        }
+                                    </RadzenStack>
+                                </RadzenCard>
+                            </RadzenTabsItem>
+                        </Tabs>
+                    </RadzenTabs>
+                    <RadzenButton Text="Reset All to Defaults" Icon="settings_backup_restore" Click="@ResetAllSettings" ButtonStyle="ButtonStyle.Secondary" class="mt-3"/>
+                </RadzenCard>
+            }
+        </Authorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+
+@code {
+    private bool IsLoading { get; set; } = true;
+    private List<Setting> Settings { get; set; } = [];
+    private List<string> Categories { get; set; } = [];
+    private Dictionary<string, SettingValue> EditedValues { get; set; } = new();
+    private List<string> AvailableClaudeModels { get; set; } = [];
+    private List<KeyValuePair<string, string>> EnvironmentVariables { get; set; } = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSettings();
+        AvailableClaudeModels = await ClaudeService.GetAvailableModelsAsync();
+        await LoadEnvironmentVariables();
+    }
+    
+    private async Task LoadEnvironmentVariables()
+    {
+        EnvironmentVariables = await SettingsService.GetEnvironmentVariablesAsync();
+    }
+
+    private async Task LoadSettings()
+    {
+        IsLoading = true;
+
+        try
+        {
+            Settings = await SettingsService.GetAllSettingsAsync();
+            Categories = Settings.OrderBy(s => s.Category).Select(s => s.Category).Distinct().ToList();
+
+            EditedValues.Clear();
+            foreach (var setting in Settings)
+                EditedValues[setting.Key] = new SettingValue(setting);
+            
+        }
+        finally
+        {
+            IsLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private static string GetCategoryIcon(string category)
+    {
+        return category.ToLower() switch
+        {
+            "branding"      => "branding_watermark",
+            "notifications" => "notifications",
+            "defaults"      => "settings_suggest",
+            "system"        => "settings",
+            "ai"            => "smart_toy",
+            "scheduler"     => "schedule",
+            var _           => "settings"
+        };
+    }
+
+    private async Task SaveCategorySettings(string category)
+    {
+        var success = true;
+        var savedCount = 0;
+        var errorMessage = string.Empty;
+
+        var categorySettings = Settings.Where(s => s.Category == category).ToList();
+        foreach (var setting in categorySettings)
+        {
+            string newValue;
+            switch (setting.Type)
+            {
+                case SettingType.Boolean:
+                    newValue = EditedValues[setting.Key].BoolValue.ToString();
+                    break;
+
+                case SettingType.Number:
+                    newValue = EditedValues[setting.Key].NumberValue.ToString();
+                    break;
+
+                default:
+                    newValue = EditedValues[setting.Key].StringValue;
+                    break;
+            }
+
+            if (newValue != setting.Value)
+            {
+                var result = await SettingsService.UpdateSettingAsync(setting.Key, newValue);
+                if (result.Successful)
+                {
+                    savedCount++;
+                    setting.Value = newValue;
+                }
+                else
+                {
+                    success = false;
+                    errorMessage = result.Message;
+                    break;
+                }
+            }
+        }
+
+        if (success)
+        {
+            if (savedCount > 0)
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Summary = "Settings Saved", 
+                    Detail = $"{savedCount} setting{(savedCount != 1 ? "s" : "")} updated successfully", 
+                    Severity = NotificationSeverity.Success, Duration = 3000
+                });
+            }
+            else
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Summary = "No Changes", 
+                    Detail = "No settings were changed", 
+                    Severity = NotificationSeverity.Info, Duration = 3000
+                });
+            }
+        }
+        else
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Summary = "Error",
+                Detail = errorMessage,
+                Severity = NotificationSeverity.Error, Duration = 5000
+            });
+        }
+    }
+
+    private async Task ResetAllSettings()
+    {
+        await SettingsService.InitializeDefaultSettingsAsync();
+        await LoadSettings();
+
+        NotificationService.Notify(new NotificationMessage
+        {
+            Summary = "Settings Reset",
+            Detail = "All settings have been reset to default values",
+            Severity = NotificationSeverity.Success, Duration = 3000
+        });
+    }
+
+    // Helper class to track edited values
+    private class SettingValue
+    {
+        public string StringValue { get; set; }
+        public bool BoolValue { get; set; }
+        public decimal NumberValue { get; set; }
+
+        public SettingValue(Setting setting)
+        {
+            StringValue = setting.Value;
+
+            switch (setting.Type)
+            {
+                case SettingType.Boolean:
+                    BoolValue = bool.TryParse(setting.Value, out var boolResult) && boolResult;
+                    break;
+
+                case SettingType.Number:
+                    NumberValue = decimal.TryParse(setting.Value, out var numResult) ? numResult : 0;
+                    break;
+            }
+        }
+    }
+
+}

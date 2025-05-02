@@ -1,0 +1,30 @@
+@inject NavigationManager NavigationManager
+
+<Router AppAssembly="@typeof(Program).Assembly">
+    <Found Context="routeData">
+        @{
+            var isMobilePath = routeData.RouteValues.TryGetValue("page", out var page) &&
+                               page?.ToString()?.StartsWith("/mobile") == true;
+            if (!isMobilePath)
+                isMobilePath = NavigationManager.Uri.Contains("/mobile", StringComparison.OrdinalIgnoreCase);
+
+            var layout = isMobilePath ? typeof(MobileLayout) : typeof(MainLayout);
+        }
+        <RouteView RouteData="@routeData" DefaultLayout="@(layout)"/>
+    </Found>
+    <NotFound>
+        <PageTitle>Not found</PageTitle>
+        @{
+            var isMobilePath = NavigationManager.Uri.Contains("/mobile/", StringComparison.OrdinalIgnoreCase);
+            var layout = isMobilePath ? typeof(MobileLayout) : typeof(MainLayout);
+        }
+        <LayoutView Layout="@(layout)">
+            <RadzenRow>
+                <RadzenColumn Size="12" style="margin-top: 5rem; margin-bottom: 5rem">
+                    <RadzenText Text="Page not found" TextStyle="TextStyle.DisplayH1" style="margin: 0; margin-bottom: 2rem" TextAlign="TextAlign.Center"/>
+                    <RadzenText Text="Sorry, but there's nothing here!" TextStyle="TextStyle.H6" style="margin: 0" TextAlign="TextAlign.Center" TagName="TagName.P"/>
+                </RadzenColumn>
+            </RadzenRow>
+        </LayoutView>
+    </NotFound>
+</Router>

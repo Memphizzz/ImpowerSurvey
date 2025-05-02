@@ -1,0 +1,21 @@
+@using BitzArt.Blazor.Cookies
+@using ImpowerSurvey.Services
+@inherits ComponentBase
+@implements IDisposable
+@inject AuthenticationStateProvider AuthStateProvider
+@inject ICookieService CookieService
+@inject DialogService DialogService
+@inject IJSUtilityService JSUtilityService
+<RadzenComponents/>
+
+<RadzenLayout>
+    <div class="mobile-container">
+        <div class="mobile-content">
+            <CascadingValue Value="this">
+                <div class="mobile-page-content">
+                    @Body
+                </div>
+            </CascadingValue>
+        </div>
+    </div>
+</RadzenLayout>

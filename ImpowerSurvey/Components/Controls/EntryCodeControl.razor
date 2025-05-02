@@ -1,0 +1,149 @@
+@using ImpowerSurvey.Components.Model
+@using ImpowerSurvey.Components.Utilities
+@using ImpowerSurvey.Services
+
+@inject DialogService DialogService
+@inject SurveyCodeService SurveyCodeService
+@inject SurveyService SurveyService
+@inject SlackService SlackService
+@inject NotificationService NotificationService
+@inject IJSUtilityService JSUtilityService
+
+@if (Survey.State is not (SurveyStates.Created or SurveyStates.Running))
+{
+    <RadzenAlert AlertStyle="AlertStyle.Info" AllowClose="false">
+        Survey is over
+    </RadzenAlert>
+}
+else
+{
+    <RadzenStack JustifyContent="JustifyContent.SpaceBetween">
+        @switch (Survey.ParticipationType)
+        {
+            case ParticipationTypes.Manual:
+                <RadzenAlert AlertStyle="AlertStyle.Info" AllowClose="false">
+                    Requesting a EntryCode marks it as issued.<br />Each code can only be used once!
+                </RadzenAlert>
+                <RadzenButton Text="Get EntryCode" Click="@GetManualEntryCode" ButtonStyle="ButtonStyle.Success" IsBusy="@IsBusy" />
+                <RadzenAlert @bind-Visible="@ShowEntryCode" AlertStyle="AlertStyle.Warning" ShowIcon="false" Close="() => ShowEntryCode = false">
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
+                        <RadzenText Text="@EntryCode" Style="color: white;" />
+                        <RadzenButton Variant="Variant.Filled" Icon="content_copy" Click="@CopyEntryCodeToClipboard" Text="Copy" ButtonStyle="ButtonStyle.Base" />
+                        @* <RadzenButton Variant="Variant.Text" Icon="print" Click="@OpenPrintDialog"/> *@
+                    </RadzenStack>
+                </RadzenAlert>
+                break;
+
+            case ParticipationTypes.Slack:
+                <RadzenTemplateForm @ref="@TemplateFormEntryCodes" TItem="@EntryCodeControl" Data="@(this)" Submit="@OnSubmitSlackGetEntryCode">
+                    <RadzenAlert AlertStyle="AlertStyle.Info" Icon="mail" AllowClose="false">
+                        Enter the Slack Email Address of the Participant.<br />They will receive an EntryCode via Direct Message.
+                    </RadzenAlert>
+                    <RadzenFormField Text="Participant Slack Email" Style="margin-top: 5px; margin-bottom: 5px;">
+                        <RadzenTextBox @ref="@TextAreaParticipantIDEntryCodes" Name="txtParticipantID" @bind-Value="@ParticipantID" Style="width: 300px;" />
+                        <RadzenRequiredValidator Component="txtParticipantID" Text="" Style="position: absolute" />
+                        <RadzenCustomValidator Component="txtParticipantID" Text="@ValidationMessage" Validator="@SlackEmailValidator" />
+                    </RadzenFormField>
+                    <RadzenButton Text="Add Participant & Send EntryCode" ButtonStyle="ButtonStyle.Success" ButtonType="ButtonType.Submit" IsBusy="@IsBusy" BusyText="@Constants.UI.Busy" Style="margin-top: 5px;" />
+                </RadzenTemplateForm>
+                break;
+
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
+    </RadzenStack>
+}
+
+@code
+{
+    [Parameter]
+    public Survey Survey { get; set; }
+
+
+    private bool IsBusy { get; set; }
+    private string ParticipantID { get; set; }
+    private string ValidationMessage { get; set; }
+    private bool? IsSlackVerified { get; set; }
+    private RadzenTemplateForm<EntryCodeControl> TemplateFormEntryCodes { get; set; }
+    private RadzenTextBox TextAreaParticipantIDEntryCodes { get; set; }
+    private string EntryCode { get; set; }
+    private bool ShowEntryCode { get; set; }
+
+	private async Task OnSubmitSlackGetEntryCode()
+	{
+		IsBusy = true;
+		await Task.Yield();
+
+		ParticipantID = ParticipantID.ToLower();
+		var result = await SlackService.VerifyParticipants([ParticipantID]);
+		if (result.Count > 0)
+		{
+			IsSlackVerified = false;
+			TemplateFormEntryCodes.EditContext.NotifyFieldChanged(TemplateFormEntryCodes.FindComponent(TextAreaParticipantIDEntryCodes.Name).FieldIdentifier);
+			IsBusy = false;
+			return;
+		}
+
+		IsSlackVerified = true;
+
+		var result2 = await SurveyService.SendInvites(Survey.Id, [ParticipantID]);
+		if (result2.Successful)
+		{
+			await DialogService.Alert(Constants.Survey.PartipantAdded, Constants.UI.Success);
+			ParticipantID = null;
+		}
+		else
+			await DialogService.Alert(result2.Message, Constants.UI.Error);
+
+		IsBusy = false;
+	}
+
+	private bool SlackEmailValidator()
+	{
+		var isValidEmail = ParticipantID.IsValidEmail();
+
+		if (!isValidEmail)
+		{
+			ValidationMessage = string.IsNullOrWhiteSpace(ParticipantID) ? string.Empty : Constants.UI.InvalidEmailAddress;
+			IsSlackVerified = null;
+			return false;
+		}
+
+		if (Survey.ParticipationType == ParticipationTypes.Slack && IsSlackVerified.HasValue && !IsSlackVerified.Value)
+		{
+			ValidationMessage = Constants.Slack.Errors.UserNotFound;
+			IsSlackVerified = null;
+			return false;
+		}
+
+		ValidationMessage = string.Empty;
+		return true;
+	}
+
+	private async Task GetManualEntryCode()
+	{
+		IsBusy = true;
+		await Task.Yield();
+
+		if (EntryCode != null && ShowEntryCode)
+		{
+			var result = await DialogService.Confirm(Constants.EntryCodes.OneAtATime, "Get EntryCode", new ConfirmOptions { OkButtonText = "Yes", CancelButtonText = "No" });
+			if (result == null || !result.Value)
+			{
+				IsBusy = false;
+				return;
+			}
+		}
+
+		EntryCode = (await SurveyCodeService.GetEntryCode(Survey.Id, true)).Code;
+		ShowEntryCode = true;
+		IsBusy = false;
+	}
+
+	private async Task CopyEntryCodeToClipboard()
+	{
+		await JSUtilityService.CopyToClipboard(EntryCode);
+		NotificationService.Notify(NotificationSeverity.Success, Constants.UI.Success, Constants.EntryCodes.CopiedClipboard);
+	}
+}
+

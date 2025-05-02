@@ -1,0 +1,120 @@
+@using ImpowerSurvey.Components.Model
+@using ImpowerSurvey.Services
+@using ImpowerSurvey.Components.Utilities
+@inject ILogService LogService
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthStateProvider
+
+<div class="error-container">
+    <div class="glass-card">
+        <div class="error-icon">
+            <i class="oi oi-warning"></i>
+        </div>
+        <h2>@Title</h2>
+        <p class="error-message">@Message</p>
+
+        @if (!string.IsNullOrEmpty(LogId))
+        {
+            <p class="error-log-info">@LogId</p>
+        }
+
+        <div class="error-actions">
+            <RadzenButton Click="@GoHome" Text="Return to Home"/>
+            @if (ShowLogin)
+            {
+                <RadzenButton Variant="Variant.Outlined" Click="@GoToLogin" Text="Login"/>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+
+    [Parameter]
+    public string Title { get; set; } = "Access Denied";
+
+    [Parameter]
+    public string Message { get; set; } = "You don't have permission to access this page.";
+
+    [Parameter]
+    public bool LogError { get; set; } = false;
+
+    [Parameter]
+    public bool ShowLogin { get; set; } = false;
+
+    [Parameter]
+    public LogSource Source { get; set; } = LogSource.AuthService;
+
+    [Parameter]
+    public string AdditionalInfo { get; set; } = string.Empty;
+
+    [Parameter]
+    public string LogId { get; set; } = string.Empty;
+    
+    [Parameter]
+    public SurveyWizardController WizardController { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (LogError && !CustomAuthStateProvider.Get(AuthStateProvider).WasRecentlyLoggedOut())
+        {
+            var requestPath = NavigationManager.Uri;
+            var message = $"Unauthorized access attempt to {requestPath}";
+            if (!string.IsNullOrEmpty(AdditionalInfo))
+                message += $" | {AdditionalInfo}";
+
+            var result = await LogService.LogAsync(Source, LogLevel.Warning, message, true);
+            LogId = result.Message;
+        }
+        
+        // Release hooks if we have a wizard controller
+        WizardController?.ReleaseHooks();
+    }
+
+    private void GoHome()
+    {
+        NavigationManager.NavigateTo("/");
+    }
+
+    private void GoToLogin()
+    {
+        NavigationManager.NavigateTo("/login");
+    }
+
+}
+
+<style>
+.error-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 80vh;
+    padding: 2rem;
+}
+
+.error-icon {
+    font-size: 3rem;
+    color: var(--rz-danger);
+    margin-bottom: 1.5rem;
+}
+
+.error-message {
+    margin: 1.5rem 0;
+    color: var(--rz-text-color);
+}
+
+.error-log-info {
+    background: var(--rz-base-200);
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-family: monospace;
+    margin: 1.5rem 0;
+}
+
+.error-actions {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+</style>

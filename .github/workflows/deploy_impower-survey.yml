@@ -1,0 +1,58 @@
+# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
+# More GitHub Actions for Azure: https://github.com/Azure/actions
+
+name: Deploy ImpowerSurvey to Azure
+
+# Manual trigger for deployment with DSS confirmation
+on:
+  workflow_dispatch:
+    inputs:
+      confirmed_dss_empty:
+        description: 'I confirm that all surveys are stopped and the DSS queue is empty 👍'
+        required: true
+        type: boolean
+        default: false
+
+# Add top-level permissions for the workflow
+permissions:
+  actions: read    # Required for downloading artifacts
+  contents: read   # Required for checkout
+  id-token: write  # Required for requesting the JWT for Azure login
+
+jobs:
+  deploy:
+    # Only run if DSS confirmation is checked
+    if: ${{ github.event.inputs.confirmed_dss_empty == 'true' }}
+    runs-on: ubuntu-latest
+    environment:
+      name: 'production'
+      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+
+    steps:
+      - name: Download latest artifact
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          workflow: build_impower-survey.yml
+          workflow_conclusion: success
+          name: .net-app
+          path: .
+          check_artifacts: true
+          search_artifacts: true
+          if_no_artifact_found: fail
+      
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_9929944CF0D04E17BA473F801B0B8E02 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_F7D14D84E55A4EBD855BEAF9284A8509 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_810282CBB7354799B21B08A28492A833 }}
+
+      - name: Deploy to Azure Web App
+        id: deploy-to-webapp
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: 'Impower-Survey'
+          slot-name: 'Production'
+          package: .
+          startup-command: 'dotnet ImpowerSurvey.dll'

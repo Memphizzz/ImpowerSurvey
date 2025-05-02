@@ -1,0 +1,147 @@
+@page "/admin/dss"
+@using ImpowerSurvey.Components.Model
+@using ImpowerSurvey.Services
+@using ImpowerSurvey.Components.Controls
+@using ImpowerSurvey.Components.Utilities
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NotificationService NotificationService
+@inject DelayedSubmissionService DelayedSubmissionService
+
+<PageTitle>@nameof(ImpowerSurvey)</PageTitle>
+
+<CascadingAuthenticationState>
+    <AuthorizeView Roles="@nameof(Roles.Admin)">
+        <NotAuthorized>
+            <NotAuthorizedControl LogError="true" />
+        </NotAuthorized>
+        <Authorized>
+            <HeaderControl Icon="monitoring" Title="Delayed Submission Service Status" MarginBottomPx="15"/>
+            <RadzenCard class="glass-card">
+                @if (Status == null)
+                {
+                    <RadzenStack Orientation="Orientation.Horizontal" Style="@Constants.UI.StyleFlexGrowRow" JustifyContent="JustifyContent.Center">
+                        <RadzenProgressBarCircular Mode="ProgressBarMode.Indeterminate" ShowValue="false"/>
+                        <RadzenText Style="align-self: center;" Text="Fetching Data, please wait.."/>
+                    </RadzenStack>
+                }
+                else
+                {
+                    <RadzenStack>
+                        <RadzenRow>
+                            <RadzenColumn Size="12" SizeMD="6">
+                                <RadzenStack Gap="1rem">
+                                    <RadzenText>Total Pending Responses: <strong>@Status.Pending</strong></RadzenText>
+                                    <RadzenText>Current Processing Percentage: <strong>@Status.CurrentPercentage%</strong></RadzenText>
+                                    <RadzenText>Next Scheduled Run: <strong>@(Status.NextTime != DateTime.MinValue ? Status.NextTime.ToProviderLocal(AuthStateProvider).ToString("g") : "None scheduled")</strong></RadzenText>
+                                </RadzenStack>
+                            </RadzenColumn>
+                            <RadzenColumn Size="12" SizeMD="6">
+                                <RadzenStack Gap="1rem">
+                                    <RadzenText>Last Processed: <strong>@(Status.LastTime != DateTime.MinValue ? Status.LastTime.ToProviderLocal(AuthStateProvider).ToString("g") : "None yet")</strong></RadzenText>
+                                    <RadzenText>Last Processed Amount: <strong>@Status.LastAmount</strong></RadzenText>
+                                    <RadzenText>Leader Status: <strong>@(Status.IsLeader ? "LEADER" : "FOLLOWER")</strong></RadzenText>
+                                    <RadzenText>Instance ID: <strong>@Status.InstanceId</strong></RadzenText>
+                                    @if (!Status.IsLeader)
+                                    {
+                                        <RadzenText>Transfer Status: <strong>@(Status.HasTransferredResponses ? "Responses transferred to leader" : "Pending transfer to leader")</strong></RadzenText>
+                                    }
+                                </RadzenStack>
+                            </RadzenColumn>
+                        </RadzenRow>
+                    </RadzenStack>
+                }
+            </RadzenCard>
+
+            <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Start" Gap="1rem" Style="margin-top: 1rem;">
+                <RadzenButton Click="RefreshStatus" Text="Refresh Status" ButtonStyle="ButtonStyle.Primary"/>
+                @if (ShowDebugButtons)
+                {
+                    <RadzenButton Click="@ForceFlushAllResponses" Text="FORCE FLUSH ALL" ButtonStyle="ButtonStyle.Danger" 
+                                  Icon="warning" Disabled="@(Status?.Pending <= 0 || !Status?.IsLeader == true)"/>
+                    <RadzenButton Click="@ForceTransferResponses" Text="TRANSFER RESPONSES" ButtonStyle="ButtonStyle.Danger" 
+                                  Icon="warning" Disabled="@(Status?.Pending <= 0 || !Status?.IsLeader == true)"/>
+                }
+            </RadzenStack>
+        </Authorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+
+@code {
+    
+    private DelayedSubmissionStatus Status { get; set; }
+    
+    // A property that's determined at runtime, not compile-time
+    // The Razor compiler won't detect this as unreachable code
+    private bool ShowDebugButtons
+    {
+        get
+        {
+#if DEBUG
+            return true;
+#else
+            return false;
+#endif
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        DelayedSubmissionService.OnStatusChanged += async status =>
+        {
+            Status = status;
+            await InvokeAsync(StateHasChanged);
+        };
+
+        Status = DelayedSubmissionService.GetStatus();
+    }
+
+    private void RefreshStatus()
+    {
+        Status = DelayedSubmissionService.GetStatus();
+        NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Status Refreshed", Detail = "DSS Status has been refreshed.", Duration = 3000 });
+    }
+
+    private async Task ForceFlushAllResponses()
+    {
+#if DEBUG
+        // Only proceed if we have pending responses and we're the leader
+        if (Status.Pending <= 0 || !Status.IsLeader)
+            return;
+            
+        var count = await DelayedSubmissionService.ForceFlushAllPendingResponses();
+        
+        Status = DelayedSubmissionService.GetStatus();
+        
+        NotificationService.Notify(new NotificationMessage 
+        { 
+            Severity = NotificationSeverity.Warning, 
+            Summary = "DEBUG: Forced Flush Completed", 
+            Detail = $"Forcibly flushed {count} responses - THIS SHOULD NEVER BE USED IN PRODUCTION!", 
+            Duration = 5000 
+        });
+#endif
+    }
+
+    private async Task ForceTransferResponses()
+    {
+#if DEBUG
+        // Only proceed if we're not the leader (followers transfer to leader)
+        if (Status.IsLeader)
+            return;
+            
+        var count = await DelayedSubmissionService.ForceFlushAllPendingResponses();
+        
+        Status = DelayedSubmissionService.GetStatus();
+        
+        NotificationService.Notify(new NotificationMessage 
+        { 
+            Severity = NotificationSeverity.Warning, 
+            Summary = "DEBUG: Forced Transfer Responses", 
+            Detail = $"Forcibly transferred {count} responses", 
+            Duration = 5000 
+        });
+#endif
+    }
+}

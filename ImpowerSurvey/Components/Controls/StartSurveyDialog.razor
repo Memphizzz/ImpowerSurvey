@@ -1,0 +1,86 @@
+@using ImpowerSurvey.Components.Model
+@using ImpowerSurvey.Services
+@inject DialogService DialogService
+@inject SurveyService SurveyService
+@inject NotificationService NotificationService
+@inject SlackService SlackService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<RadzenTemplateForm @ref="@TemplateForm" TItem="SurveyStartInfo" Data="@Model" Submit="@OnSubmit" InvalidSubmit="@OnInvalidSubmit" Context="form">
+    <RadzenCard>
+        <RadzenStack>
+            <div class="group-border" Style="@Constants.UI.StyleFlexGrowCol">
+                <RadzenButton Text="Manager" Size="ButtonSize.ExtraSmall" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Light" Style="@Constants.UI.StyleGroupBorder"/>
+                <RadzenFormField Text="Name">
+                    <RadzenTextBox Name="txtManagerName" Disabled="true" Value="@Model.ManagerDisplayName"/>
+                    <RadzenRequiredValidator Component="txtManagerName" Text=""/>
+                </RadzenFormField>
+                <RadzenFormField Text="Email">
+                    <RadzenTextBox @ref="@TextBoxManagerEmail" Name="txtManagerEmail" Disabled="true" @bind-Value="@Model.ManagerEmail"/>
+                    <RadzenRequiredValidator Component="txtManagerEmail" Text=""/>
+                    <RadzenCustomValidator Component="txtManagerEmail" Validator="@SlackEmailValidator" Text="@ValidationMessage"/>
+                </RadzenFormField>
+            </div>
+
+            <div class="group-border" Style="@Constants.UI.StyleFlexGrowCol">
+                <RadzenButton Text="Participants" Size="ButtonSize.ExtraSmall" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Light" Style="@Constants.UI.StyleGroupBorder"/>
+
+                <RadzenSelectBar TValue="ParticipationTypes" @bind-Value="@Model.ParticipationType">
+                    <Items>
+                        <RadzenSelectBarItem Value="ParticipationTypes.Manual" Text="By Count"/>
+                        <RadzenSelectBarItem Value="ParticipationTypes.Slack" Text="Use Slack"/>
+                    </Items>
+                </RadzenSelectBar>
+
+                @switch (Model.ParticipationType)
+                {
+                    case ParticipationTypes.Manual:
+                        <RadzenFormField Text="Expected Participant Count" Style="margin-top: 5px;">
+                            <RadzenNumeric Name="txtParticipantCount" @bind-Value="@Model.ParticipantCount" Min="2" Placeholder="Expected Participants"/>
+                            <RadzenRequiredValidator Component="txtParticipantCount" Text="" Style="position: absolute"/>
+                            <RadzenNumericRangeValidator Component="txtParticipantCount" AllowNull="false" Min="2"/>
+                        </RadzenFormField>
+                        break;
+
+                    case ParticipationTypes.Slack:
+                        <RadzenFormField Text="Expected Participant List (comma separated)" Style="margin-top: 5px;">
+                            <RadzenTextArea @ref="@TextAreaParticipants" Name="txtParticipants" @bind-Value="@ParticipantsString" Rows="3"/>
+                            <RadzenRequiredValidator Component="txtParticipants" Text="" Style="position: absolute"/>
+                        </RadzenFormField>
+                        <RadzenRequiredValidator Component="txtParticipants" Text=""/>
+                        <RadzenCustomValidator Component="txtParticipants" Validator="ParticipantListValidator" Text="@ValidationMessage"/>
+                        break;
+                }
+            </div>
+
+            <div class="group-border" Style="@Constants.UI.StyleFlexGrowCol">
+                <RadzenButton Text="Start Date" Size="ButtonSize.ExtraSmall" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Light" Style="@Constants.UI.StyleGroupBorder"/>
+
+                <RadzenToggleButton Text="@(Model.HasStartDate ? "Scheduled" : "Not Scheduled")" @bind-Value="@Model.HasStartDate" ToggleButtonStyle="ButtonStyle.Success"/>
+                <RadzenFormField Text="Scheduled Start Date" Style="margin-top: 5px;">
+                    <RadzenDatePicker Name="txtStartDate" @bind-Value="@Model.StartDate" DateFormat="MM/dd/yyyy HH:mm" ShowTime="true" Disabled="@(!Model.HasStartDate)"/>
+                </RadzenFormField>
+                @if (Model.HasStartDate)
+                {
+                    <RadzenRequiredValidator Component="txtStartDate" Text="" Style="position: absolute"/>
+                    <RadzenCustomValidator Component="txtEndDate" Validator="StartDateValidator" Text="Start Date cannot be less than 1 hour from now"/>
+                }
+            </div>
+            <div class="group-border" Style="@Constants.UI.StyleFlexGrowCol">
+                <RadzenButton Text="End Date" Size="ButtonSize.ExtraSmall" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Light" Style="@Constants.UI.StyleGroupBorder"/>
+
+                <RadzenToggleButton Text="@(Model.HasEndDate ? "Scheduled" : "Not Scheduled")" @bind-Value="@Model.HasEndDate" ToggleButtonStyle="ButtonStyle.Success"/>
+                <RadzenFormField Text="Expected End Date" Style="margin-top: 5px;">
+                    <RadzenDatePicker Name="txtEndDate" @bind-Value="@Model.EndDate" DateFormat="MM/dd/yyyy HH:mm" ShowTime="true" Disabled="@(!Model.HasEndDate)"/>
+                </RadzenFormField>
+                @if (Model.HasEndDate)
+                {
+                    <RadzenRequiredValidator Component="txtEndDate" Text="" Style="position: absolute"/>
+                    <RadzenCustomValidator Component="txtEndDate" Validator="EndDateValidator" Text="End Date cannot be earlier than Start Date"/>
+                }
+            </div>
+
+            <BButton Text="Kick Off Survey" Style="width: 180px; align-self: end" ButtonStyle="ButtonStyle.Success" ButtonType="ButtonType.Submit" IsBusy="@IsBusy" BusyText="@Constants.UI.Busy"/>
+        </RadzenStack>
+    </RadzenCard>
+</RadzenTemplateForm>

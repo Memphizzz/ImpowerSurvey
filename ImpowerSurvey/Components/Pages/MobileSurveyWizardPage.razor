@@ -1,0 +1,253 @@
+@page "/mobile/take-survey/{SurveyId:guid}"
+@using ImpowerSurvey.Components.Controls
+@using ImpowerSurvey.Components.Model
+@using ImpowerSurvey.Components.Utilities
+@using ImpowerSurvey.Services
+
+@inject IJSUtilityService JSUtilityService
+@inject DialogService DialogService
+@inject SurveyService SurveyService
+@inject NavigationManager NavigationManager
+@inject NotificationService NotificationService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject ISettingsService SettingsService
+
+<CascadingAuthenticationState>
+    <AuthorizeView Roles="@nameof(Roles.SurveyParticipant)">
+        <NotAuthorized>
+            <NotAuthorizedControl LogError="true" WizardController="@Wizard?.Controller" />
+        </NotAuthorized>
+        <Authorized>
+            <PageTitle>Impower Survey-Mobile</PageTitle>
+            @if (Survey != null)
+            {
+                <div class="glass-card" Style="margin-bottom: 100px;">
+                    @switch (CurrentPageIndex)
+                    {
+                        case 0:
+                            <div class="d-flex flex-column" style="min-height: 500px;">
+                                <div class="question-card welcome-container">
+                                    <RadzenText TextStyle="TextStyle.H4">Welcome to ImpowerSurvey</RadzenText>
+                                    <RadzenText TextStyle="TextStyle.Body1">
+                                        Thank you for participating in this survey. Before you begin, we want to introduce you to SHIELD, an innovative privacy principle
+                                        developed by Impower.AI. Your privacy is our utmost concern, and SHIELD is how we ensure it.
+                                    </RadzenText>
+                                </div>
+
+                                <div class="shield-explanation mobile flex-grow-1">
+                                    <p>@Constants.SHIELD.SurveyImplements</p>
+                                    <MobileShieldControl/>
+                                </div>
+                                <br/>
+
+                                <div class="survey-intro-container">
+                                    <RadzenText TextStyle="TextStyle.H5" class="intro-heading">You are about to take the survey:</RadzenText>
+                                    <div class="glass-card" style="padding: 1rem;">
+                                        <RadzenText TextStyle="TextStyle.H3" class="survey-title">@Survey.Title</RadzenText>
+                                        <div class="survey-description">@Survey.Description</div>
+                                        <RadzenAlert AlertStyle="AlertStyle.Info" Size="AlertSize.Small" Variant="Variant.Filled" ShowIcon="true" AllowClose="false" Style="margin-top: 1rem;">
+                                            Survey ID: <strong>@Survey.Id.ToHumanReadableId()</strong>
+                                            <p style="margin-top: 0.5rem; margin-bottom: 0;">@string.Format(Constants.Survey.SurveyIdAlert, Survey.Id.ToHumanReadableId())</p>
+                                        </RadzenAlert>
+                                    </div>
+                                </div>
+
+                                <RadzenStack Gap="0.5rem" class="mt-auto">
+                                    <RadzenButton ButtonStyle="ButtonStyle.Success" Click="@NextPage"
+                                                  Size="ButtonSize.Medium" Icon="play_arrow" Text="Start Survey" class="nav-btn"/>
+
+                                    <RadzenButton ButtonStyle="ButtonStyle.Light" Click="@(() => NavigateToPage(Survey.Questions.Count + 1))"
+                                                  Size="ButtonSize.Medium" Icon="skip_next" Text="Skip to Submit" class="nav-btn" Variant="Variant.Outlined"/>
+                                </RadzenStack>
+                            </div>
+                            break;
+
+                        case > 0 when CurrentPageIndex <= Survey.Questions.Count:
+                        {
+                            var questionIndex = CurrentPageIndex - 1;
+                            var question = Survey.Questions.ElementAt(questionIndex);
+
+                            <div class="mobile-question-container d-flex flex-column" style="min-height: 500px;">
+                                <div class="mobile-question-header">
+                                    <RadzenProgressBar Value="@((double)CurrentPageIndex / (Survey.Questions.Count + 1) * 100)" ShowValue="false"/>
+                                    <div class="step-indicator">
+                                        <RadzenIcon Icon="help"/>
+                                        <h4 class="step-text">Question @CurrentPageIndex of @Survey.Questions.Count</h4>
+                                    </div>
+                                </div>
+
+                                <div class="mobile-question-content flex-grow-1 d-flex flex-column">
+                                    <div class="question-text">@question.Text</div>
+
+                                    <div class="question-response flex-grow-1 d-flex flex-column justify-content-center">
+                                        @switch (question.Type)
+                                        {
+                                            case QuestionTypes.Text:
+                                                <RadzenTextArea @bind-Value="@Wizard.Controller.Responses[question.Id]"
+                                                                Placeholder="Enter your response..." Rows="4" class="w-100 mb-2"/>
+                                                <RadzenAlert AlertStyle="AlertStyle.Light" Size="AlertSize.Small" Variant="Variant.Outlined" Icon="robot_2" AllowClose="false">
+                                                    @(ClaudeEnabled ? Constants.AI.AnonymizationEnabledMessage : Constants.AI.AnonymizationDisabledMessage)
+                                                </RadzenAlert>
+                                                break;
+
+                                            case QuestionTypes.Rating:
+                                                <div class="rating-container mobile-rating">
+                                                    <ImpowerRating @bind-Value="@Wizard.Controller.RatingResponses[question.Id]" Stars="5"/>
+                                                </div>
+                                                break;
+
+                                            case QuestionTypes.SingleChoice:
+                                            case QuestionTypes.MultipleChoice:
+                                                <div class="scrollable-options">
+                                                    @if (question.Type == QuestionTypes.SingleChoice)
+                                                    {
+                                                        <ImpowerChoices Options="@question.Options" IsMultiple="false" ReadOnly="false"
+                                                                        @bind-SelectedValue="@Wizard.Controller.SingleChoiceResponses[question.Id]"/>
+                                                    }
+                                                    else
+                                                    {
+                                                        <ImpowerChoices Options="@question.Options" IsMultiple="true" ReadOnly="false"
+                                                                        @bind-SelectedValues="@Wizard.Controller.MultipleChoiceResponses[question.Id]"/>
+                                                    }
+                                                </div>
+                                                break;
+                                        }
+
+                                        @if (ShowRequired)
+                                        {
+                                            <div class="mt-2">
+                                                <RadzenText TextStyle="TextStyle.Subtitle2" class="rz-color-danger">This question requires a response.</RadzenText>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+
+                                <div class="mobile-question-footer mt-auto">
+                                    <div class="survey-buttons">
+                                        <BButton Text="Previous" Click="@PreviousPage" ButtonStyle="ButtonStyle.Light"/>
+                                        <BButton Text="Next" Click="@NextPage" ButtonStyle="ButtonStyle.Primary"/>
+
+                                    </div>
+                                </div>
+                            </div>
+                            break;
+                        }
+
+                        default:
+                        {
+                            if (CurrentPageIndex == Survey.Questions.Count + 1)
+                            {
+                                <div class="mobile-question-submit-container d-flex flex-column" style="min-height: 500px;">
+                                    <div class="mobile-question-header">
+                                        <RadzenProgressBar Value="@((double)CurrentPageIndex / (Survey.Questions.Count + 1) * 100)" ShowValue="false"/>
+                                        <div class="step-indicator">
+                                            <RadzenIcon Icon="done_all"/>
+                                            <h4 class="step-text">Final Step: Submit Survey</h4>
+                                        </div>
+                                    </div>
+                                    @if (string.IsNullOrEmpty(CompletionCode))
+                                    {
+                                        <div class="mobile-question-content flex-grow-1 d-flex flex-column">
+                                            <div class="shield-reminder mobile">
+                                                <MobileShieldControl/>
+                                                <RadzenText Style="text-align: center;">@Constants.SHIELD.ResponsesSeparated</RadzenText>
+                                            </div>
+
+                                            <div class="question-response flex-grow-1">
+                                                <ShieldAccordion ShowSlack="@(Survey.ParticipationType == ParticipationTypes.Slack)"/>
+                                            </div>
+                                        </div>
+
+                                        <div class="mobile-question-footer mt-auto">
+                                            <RadzenButton Text="Submit" Click="@SubmitSurvey" ButtonStyle="ButtonStyle.Success" Icon="send" IsBusy="@IsBusy" BusyText="@BusyText"/>
+                                            @if (!IsBusy)
+                                            {
+                                                <RadzenButton Text="Back" Icon="arrow_back_ios_new" Click="@PreviousPage" ButtonStyle="ButtonStyle.Light"/>
+                                                <RadzenButton Text="Start Over" Icon="restart_alt" Click="() => NavigateToPage(1)" ButtonStyle="ButtonStyle.Light"/>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <CompletionCodeDisplay CompletionCode="@CompletionCode" IsMobile="true"/>
+                                    }
+                                    <div id="@Constants.UI.EndElement"></div>
+                                </div>
+                            }
+
+                            break;
+                        }
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="loading">
+                    <RadzenProgressBar Mode="ProgressBarMode.Indeterminate"/>
+                    <p> Loading survey...</p>
+                </div>
+            }
+
+        </Authorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+<style>
+
+    /* Flexbox helper classes */
+    .d-flex {
+        display: flex;
+    }
+
+    .flex-column {
+        flex-direction: column;
+    }
+
+    .flex-grow-1 {
+        flex-grow: 1;
+    }
+
+    .mt-auto {
+        margin-top: auto;
+    }
+
+    .justify-content-center {
+        justify-content: center;
+    }
+
+    .mobile-question-content {
+        flex: 1;
+    }
+
+    .question-response {
+    }
+
+    .scrollable-options {
+        overflow-y: auto;
+        max-height: 300px;
+        padding-right: 10px;
+        margin-bottom: 10px;
+    }
+    
+    .mobile-rating {
+        overflow: visible !important;
+        width: auto !important;
+        box-sizing: content-box !important;
+        min-width: 100% !important;
+    }
+    
+    .impower-rating {
+        overflow: visible !important;
+    }
+
+    .question-card.welcome-container {
+        min-height: 200px;
+    }
+
+    .survey-intro-container {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+</style>

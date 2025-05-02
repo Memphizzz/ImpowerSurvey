@@ -1,0 +1,96 @@
+<button @attributes="AdditionalAttributes"
+        type="@(ButtonType == ButtonType.Submit ? "submit" : "button")"
+        class="@GetButtonClasses()"
+        disabled="@(Disabled || IsBusy)"
+        @onclick="Click">
+
+    <span class="rz-button-box">
+        @if (!string.IsNullOrWhiteSpace(Icon))
+        {
+            <i class="notranslate rz-button-icon-left rzi button__text">
+                @Icon
+            </i>
+        }
+        @if (!string.IsNullOrWhiteSpace(Text))
+        {
+            <span class="button__text">
+                @Text
+            </span>
+        }
+    </span>
+</button>
+
+@code {
+
+    [Parameter]
+    public string Text { get; set; }
+
+    [Parameter]
+    public bool IsBusy { get; set; }
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public string Icon { get; set; }
+
+    [Parameter]
+    public Variant Variant { get; set; }
+
+    [Parameter]
+    public ButtonType ButtonType { get; set; }
+
+    [Parameter]
+    public EventCallback<MouseEventArgs> Click { get; set; }
+
+    [Parameter]
+    public ButtonStyle ButtonStyle { get; set; } = ButtonStyle.Success;
+
+    [Parameter]
+    public ButtonSize Size { get; set; } = ButtonSize.Medium;
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object> AdditionalAttributes { get; set; }
+
+    private string GetButtonClasses()
+    {
+        string size;
+        switch (Size)
+        {
+            case ButtonSize.Medium:
+                size = "md";
+                break;
+
+            case ButtonSize.Large:
+                size = "lg";
+                break;
+
+            case ButtonSize.Small:
+                size = "sm";
+                break;
+
+            case ButtonSize.ExtraSmall:
+                size = "ssm";
+                break;
+
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
+
+        var classes = new List<string>
+        {
+            "custom-button",
+            "rz-button",
+            "rz-shade-default",
+            "rz-variant-filled",
+            $"rz-{ButtonStyle.ToString().ToLower()}",
+            $"rz-button-{size}",
+            $"rz-variant-{Variant.ToString().ToLower()}"
+        };
+
+        if (IsBusy)
+            classes.Add("button--loading");
+
+        return string.Join(" ", classes);
+    }
+}

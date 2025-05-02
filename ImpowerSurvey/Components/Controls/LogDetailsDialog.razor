@@ -1,0 +1,114 @@
+@using ImpowerSurvey.Components.Model
+@using System.ComponentModel
+@using System.Reflection
+@using Microsoft.Extensions.Logging
+@using ImpowerSurvey.Components.Utilities
+@inject AuthenticationStateProvider AuthStateProvider
+@inject DialogService DialogService
+
+<RadzenStack Gap="1rem" Class="rz-p-4">
+    <RadzenRow>
+        <RadzenColumn Size="6">
+            <RadzenStack>
+                <RadzenText TextStyle="TextStyle.Subtitle2">Timestamp</RadzenText>
+                <RadzenText>@Log.Timestamp.ToProviderLocal(AuthStateProvider).ToString("g")</RadzenText>
+            </RadzenStack>
+        </RadzenColumn>
+        <RadzenColumn Size="6">
+            <RadzenStack>
+                <RadzenText TextStyle="TextStyle.Subtitle2">Level</RadzenText>
+                <RadzenBadge BadgeStyle="@GetBadgeStyle(Log.Level)" Text="@Log.Level" />
+            </RadzenStack>
+        </RadzenColumn>
+    </RadzenRow>
+    
+    <RadzenRow>
+        <RadzenColumn Size="6">
+            <RadzenStack>
+                <RadzenText TextStyle="TextStyle.Subtitle2">Source</RadzenText>
+                <RadzenText>@Log.Source</RadzenText>
+            </RadzenStack>
+        </RadzenColumn>
+        <RadzenColumn Size="6">
+            <RadzenStack>
+                <RadzenText TextStyle="TextStyle.Subtitle2">User</RadzenText>
+                <RadzenText>@(string.IsNullOrEmpty(Log.User) ? "-" : Log.User)</RadzenText>
+            </RadzenStack>
+        </RadzenColumn>
+    </RadzenRow>
+    
+    <RadzenRow>
+        <RadzenColumn Size="12">
+            <RadzenStack>
+                <RadzenText TextStyle="TextStyle.Subtitle2">Message</RadzenText>
+                <RadzenCard Style="background-color: var(--rz-base-background-color);">
+                    <pre style="margin: 0; white-space: pre-wrap;">@Log.Message</pre>
+                </RadzenCard>
+            </RadzenStack>
+        </RadzenColumn>
+    </RadzenRow>
+    
+    <RadzenRow>
+        <RadzenColumn Size="12">
+            <RadzenStack>
+                <RadzenText TextStyle="TextStyle.Subtitle2">SHIELD Compliance</RadzenText>
+                <div>
+                    <RadzenBadge BadgeStyle="@(Log.ContainsIdentityData ? BadgeStyle.Warning : BadgeStyle.Success)" 
+                                Text="@(Log.ContainsIdentityData ? "Contains Identity Data" : "No Identity Data")" 
+                                Class="rz-mr-2" />
+                    <RadzenBadge BadgeStyle="@(Log.ContainsResponseData ? BadgeStyle.Warning : BadgeStyle.Success)" 
+                                Text="@(Log.ContainsResponseData ? "Contains Response Data" : "No Response Data")" />
+                </div>
+            </RadzenStack>
+        </RadzenColumn>
+    </RadzenRow>
+    
+    @if (!string.IsNullOrEmpty(Log.Data))
+    {
+        <RadzenRow>
+            <RadzenColumn Size="12">
+                <RadzenStack>
+                    <RadzenText TextStyle="TextStyle.Subtitle2">Additional Data</RadzenText>
+                    <RadzenCard Style="background-color: var(--rz-base-background-color); max-height: 200px; overflow: auto;">
+                        <pre style="margin: 0; white-space: pre-wrap;">@Log.Data</pre>
+                    </RadzenCard>
+                </RadzenStack>
+            </RadzenColumn>
+        </RadzenRow>
+    }
+</RadzenStack>
+
+@code {
+    [Parameter]
+    public Log Log { get; set; }
+    
+    private BadgeStyle GetBadgeStyle(string level)
+    {
+        if (Enum.TryParse<LogLevel>(level, out var logLevel))
+        {
+            return logLevel switch
+            {
+                LogLevel.Information => BadgeStyle.Info,
+                LogLevel.Warning => BadgeStyle.Warning,
+                LogLevel.Error => BadgeStyle.Danger,
+                LogLevel.Critical => BadgeStyle.Danger,
+                LogLevel.Debug => BadgeStyle.Light,
+                LogLevel.Trace => BadgeStyle.Light,
+                LogLevel.None => BadgeStyle.Secondary,
+                _ => BadgeStyle.Secondary
+            };
+        }
+        
+        return BadgeStyle.Secondary;
+    }
+    
+    private static string GetEnumDescription(Enum value)
+    {
+        FieldInfo field = value.GetType().GetField(value.ToString());
+        if (field?.GetCustomAttributes(typeof(DescriptionAttribute), false) is DescriptionAttribute[] attributes && attributes.Length > 0)
+        {
+            return attributes[0].Description;
+        }
+        return value.ToString();
+    }
+}

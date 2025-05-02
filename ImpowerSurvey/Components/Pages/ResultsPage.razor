@@ -1,0 +1,208 @@
+@page "/survey-results/{SurveyId:guid}"
+@using ImpowerSurvey.Components.Controls
+@using ImpowerSurvey.Components.Model
+@using ImpowerSurvey.Services
+@inject SurveyService SurveyService
+@inject NavigationManager NavigationManager
+@inject IJSUtilityService JSUtilityService
+@inject AuthenticationStateProvider AuthStateProvider
+@implements IDisposable
+
+<PageTitle>@nameof(ImpowerSurvey)</PageTitle>
+
+<CascadingAuthenticationState>
+    <AuthorizeView Roles="@nameof(Roles.SurveyManager)">
+        <NotAuthorized>
+            <NotAuthorizedControl LogError="true" />
+        </NotAuthorized>
+        <Authorized>
+            <RadzenRow>
+                <RadzenColumn Size="12">
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
+                        <RadzenBadge BadgeStyle="BadgeStyle.Primary" Text="Results"/>
+                        <RadzenText TextStyle="TextStyle.H3" TagName="TagName.H1" class="mb-0">@Survey?.Title</RadzenText>
+                    </RadzenStack>
+                    
+                    <RadzenCard Variant="Variant.Filled" class="glass-card">
+                        @if (Survey == null || Survey.Questions == null)
+                        {
+                            <RadzenProgressBar Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate"/>
+                        }
+                        else
+                        {
+                            @switch (_authStateProvider.GetCurrentResultsTab())
+                            {
+                                case ResultsTab.Participation:
+                                    <RadzenText TextStyle="TextStyle.H5">Participation Statistics</RadzenText>
+                                    <ParticipationDialog SurveyId="SurveyId"/>
+                                    break;
+                                    
+                                case ResultsTab.Question:
+                                    {
+                                        var questionId = _authStateProvider.GetCurrentQuestionId();
+                                        var question = Questions.FirstOrDefault(q => q.Id == questionId);
+                                        if (question != null)
+                                        {
+                                            <SurveyQuestionResult Question="@question" Responses="@GetResponsesForQuestion(question.Id)"/>
+                                        }
+                                    }
+                                    break;
+                                    
+                                default: // Overview
+                                    <RadzenText TextStyle="TextStyle.H5">Survey Overview</RadzenText>
+                                    <RadzenRow Style="margin-bottom: 20px;">
+                                        <RadzenColumn Size="12" SizeMD="6">
+                                            <RadzenCard>
+                                                <RadzenText TextStyle="TextStyle.Subtitle1">Response Rate</RadzenText>
+                                                <RadzenChart>
+                                                    <RadzenPieSeries Data="@GetParticipationData()" CategoryProperty="Category" ValueProperty="Count">
+                                                        <RadzenSeriesDataLabels Visible="true" />
+                                                    </RadzenPieSeries>
+                                                </RadzenChart>
+                                            </RadzenCard>
+                                        </RadzenColumn>
+                                        <RadzenColumn Size="12" SizeMD="6">
+                                            <RadzenCard>
+                                                <RadzenText TextStyle="TextStyle.Subtitle1">Question Types</RadzenText>
+                                                <RadzenChart>
+                                                    <RadzenPieSeries Data="@GetQuestionTypeData()" CategoryProperty="Type" ValueProperty="Count">
+                                                        <RadzenSeriesDataLabels Visible="true" />
+                                                    </RadzenPieSeries>
+                                                </RadzenChart>
+                                            </RadzenCard>
+                                        </RadzenColumn>
+                                    </RadzenRow>
+                                    <RadzenRow Class="mt-3">
+                                        <RadzenColumn Size="12">
+                                            <RadzenCard>
+                                                <RadzenText TextStyle="TextStyle.Subtitle1">Response Summary by Question</RadzenText>
+                                                <RadzenDataGrid Data="@GetQuestionSummary()" AllowSorting="true">
+                                                    <Columns>
+                                                        <RadzenDataGridColumn TItem="QuestionSummary" Property="Number" Title="#" Width="60px" TextAlign="TextAlign.Center" />
+                                                        <RadzenDataGridColumn TItem="QuestionSummary" Property="QuestionText" Title="Question" />
+                                                        <RadzenDataGridColumn TItem="QuestionSummary" Property="Type" Title="Type" Width="120px" />
+                                                        <RadzenDataGridColumn TItem="QuestionSummary" Property="ResponseCount" Title="Responses" Width="100px" TextAlign="TextAlign.Center" />
+                                                        <RadzenDataGridColumn TItem="QuestionSummary" Property="Actions" Title="" Width="80px" TextAlign="TextAlign.Center">
+                                                            <Template Context="data">
+                                                                <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="visibility" Size="ButtonSize.Small"
+                                                                          Click="() => _authStateProvider.SetCurrentResultsTab(ResultsTab.Question, data.Id)" />
+                                                            </Template>
+                                                        </RadzenDataGridColumn>
+                                                    </Columns>
+                                                </RadzenDataGrid>
+                                            </RadzenCard>
+                                        </RadzenColumn>
+                                    </RadzenRow>
+                                    break;
+                            }
+                        }
+                    </RadzenCard>
+                </RadzenColumn>
+            </RadzenRow>
+        </Authorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+
+@code {
+    [Parameter]
+    public Guid SurveyId { get; set; }
+
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "export")]
+    public string ExportType { get; set; }
+
+    private Survey Survey { get; set; }
+    private List<Question> Questions => Survey?.Questions ?? [];
+    private List<Response> Responses => Survey?.Responses ?? [];
+    private CustomAuthStateProvider _authStateProvider;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _authStateProvider = CustomAuthStateProvider.Get(AuthStateProvider);
+        _authStateProvider.ResultsTabChanged += HandleResultsTabChanged;
+        
+        await LoadData();
+        _authStateProvider.SetCurrentSurvey(Survey);
+        _authStateProvider.SetCurrentResultsTab(ResultsTab.Overview);
+    }
+    
+    private void HandleResultsTabChanged(ResultsTab tab, int questionId)
+    {
+        // Update the UI when the tab changes
+        StateHasChanged();
+    }
+    
+    public void Dispose()
+    {
+        if (_authStateProvider != null)
+        {
+            _authStateProvider.ResultsTabChanged -= HandleResultsTabChanged;
+        }
+    }
+
+    private async Task LoadData()
+    {
+        Survey = await SurveyService.GetSurveyResults(SurveyId);
+        if (Survey == null)
+        {
+            NavigationManager.NavigateTo("/surveys");
+            return;
+        }
+    }
+
+    private List<Response> GetResponsesForQuestion(int questionId)
+    {
+        return Responses.Where(x => x.QuestionId == questionId).ToList();
+    }
+    
+    private List<QuestionTypeCount> GetQuestionTypeData()
+    {
+        var result = new List<QuestionTypeCount>();
+        if (Questions == null)
+            return result;
+            
+        result = Questions
+            .GroupBy(q => q.Type)
+            .Select(g => new QuestionTypeCount { Type = g.Key.ToString(), Count = g.Count() })
+            .ToList();
+            
+        return result;
+    }
+    
+    private List<ParticipationCount> GetParticipationData()
+    {
+        if (Responses == null || Survey == null)
+            return [];
+
+        var totalParticipants = Survey.UsedEntryCodes;
+        return
+        [
+            new ParticipationCount { Category = "Responses", Count = totalParticipants },
+            new ParticipationCount { Category = "Non-responses", Count = Math.Max(0, 10 - totalParticipants) }
+        ];
+    }
+    
+    private List<QuestionSummary> GetQuestionSummary()
+    {
+        var result = new List<QuestionSummary>();
+        if (Questions == null)
+            return result;
+            
+        for (var i = 0; i < Questions.Count; i++)
+        {
+            var q = Questions[i];
+            var responseCount = Responses?.Count(r => r.QuestionId == q.Id) ?? 0;
+            
+            result.Add(new QuestionSummary
+            {
+                Id = q.Id,
+                Number = i + 1,
+                QuestionText = q.Text,
+                Type = q.Type.ToString(),
+                ResponseCount = responseCount
+            });
+        }
+        
+        return result;
+    }
+}

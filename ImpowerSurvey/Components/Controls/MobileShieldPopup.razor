@@ -1,0 +1,64 @@
+@inject NavigationManager NavigationManager
+
+<style>
+    .mobile-shield-description h2 {
+        color: #096AF2;
+        font-size: 1.2rem;
+        margin-top: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .mobile-shield-description ul {
+        padding-left: 15px;
+        margin-top: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .mobile-shield-description li {
+        margin-bottom: 8px;
+        font-size: 0.9rem;
+    }
+
+    .mobile-shield-description p {
+        font-size: 0.9rem;
+        margin-top: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .mobile-learn-more {
+        padding: 8px;
+        background-color: #096AF2;
+        border-radius: 6px;
+        margin-top: 0.5rem;
+    }
+</style>
+
+<RadzenCard Style="padding: 12px; margin: 0px; border-radius: 8px;">
+    <div class="mobile-shield-description">
+        <h2>@Constants.SHIELD.WhatIsHeader</h2>
+        <p>
+            @Constants.SHIELD.MobileDescription
+        </p>
+
+        <h2>@Constants.SHIELD.HowProtectsHeader</h2>
+        <ul>
+            <li><strong>@Constants.SHIELD.CompleteAnonymity</strong></li>
+            <li><strong>@Constants.SHIELD.SecureAccess</strong></li>
+            <li><strong>@Constants.SHIELD.DataProtection</strong></li>
+            <li><strong>@Constants.SHIELD.HonestFeedback</strong></li>
+        </ul>
+
+        <h2>@Constants.SHIELD.MobilePromiseHeader</h2>
+        <p>@Constants.SHIELD.MobilePromiseStatement</p>
+
+        <div class="mobile-learn-more">
+            <RadzenStack Gap="0">
+                <RadzenText TextStyle="TextStyle.Subtitle1">
+                    <strong>@Constants.SHIELD.LearnMoreHeader</strong>
+                </RadzenText>
+                <RadzenText TextStyle="TextStyle.Body2">@Constants.SHIELD.LearnMoreMobileText</RadzenText>
+                <RadzenButton Size="ButtonSize.Small" Variant="Variant.Outlined" ButtonStyle="ButtonStyle.Light" Style="margin-top: 5px;" Click="@(() => NavigationManager.NavigateTo(Constants.SHIELD.DeepDiveUrl))">@Constants.SHIELD.LearnMoreMobileButtonText</RadzenButton>
+            </RadzenStack>
+        </div>
+    </div>
+</RadzenCard>

@@ -1,0 +1,191 @@
+@using ImpowerSurvey.Components.Model
+
+<div class="impower-choices @(IsMultiple ? "multiple" : "single")">
+    <div class="choices-caption">
+        @if (IsMultiple)
+        {
+            <span>Select all that apply</span>
+        }
+        else
+        {
+            <span>Select one option</span>
+        }
+    </div>
+
+    @if (IsMultiple)
+    {
+        <RadzenCheckBoxList TValue="string" @bind-Value="@SelectedValues" Orientation="Orientation.Vertical">
+            <Items>
+                @foreach (var option in Options)
+                {
+                    <RadzenCheckBoxListItem TValue="string" Text="@option.Text" class="glass-card question-option" Value="@option.Text"
+                                            @onclick="() => OnOptionSelected(option)"/>
+                }
+            </Items>
+        </RadzenCheckBoxList>
+    }
+    else
+    {
+        <RadzenRadioButtonList Orientation="Orientation.Vertical" @bind-Value="@SelectedValue" TValue="string">
+            <Items>
+                @foreach (var option in Options)
+                {
+                    <RadzenRadioButtonListItem Text="@option.Text" class="glass-card question-option" Value="@option.Text"
+                                               @onclick="() => OnOptionSelected(option)"/>
+                }
+            </Items>
+        </RadzenRadioButtonList>
+    }
+</div>
+
+<style>
+    .impower-choices {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+    margin-bottom: 1rem;
+    }
+
+    .question-option {
+        padding: 0.5rem;
+        margin-block: 5px !important;
+        border-radius: 5px;
+        background: 0;
+        box-shadow: none;
+        -moz-box-shadow: none;
+        -webkit-box-shadow: none;
+    }
+
+    .rz-chkbox-label {
+        cursor: pointer;
+    }
+
+    .rz-radiobutton-label {
+        cursor: pointer;
+    }
+
+    .choices-caption {
+    font-size: 0.85rem;
+    color: var(--rz-text-secondary-color);
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    }
+
+    /* Make lists full width */
+    :deep(.rz-radiobutton-list), :deep(.rz-checkbox-list) {
+    width: 100%;
+    }
+
+    /* Full width style similar to original design */
+    :deep(.rz-radiobutton-list-item), :deep(.rz-checkbox-list-item) {
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    border: 1px solid var(--rz-input-border-color);
+    background-color: var(--rz-base-background-color);
+    transition: all 0.2s ease-in-out;
+    }
+
+    :deep(.rz-radiobutton-list-item:hover), :deep(.rz-checkbox-list-item:hover) {
+    border-color: var(--rz-primary);
+    background-color: var(--rz-primary-lighter);
+    }
+
+    :deep(.rz-radiobutton-list-item.rz-state-active), :deep(.rz-checkbox-list-item.rz-state-active) {
+    border-color: var(--rz-primary);
+    background-color: var(--rz-primary-lighter);
+    }
+
+    /* Style the radio/checkbox controls */
+    :deep(.rz-radiobutton-box) {
+    border: 2px solid var(--rz-input-border-color);
+    background-color: var(--rz-base-background-color);
+    transition: all 0.2s ease-in-out;
+    }
+
+    :deep(.rz-radiobutton-box.rz-state-active) {
+    border-color: var(--rz-primary);
+    }
+
+    :deep(.rz-checkbox-box) {
+    border: 2px solid var(--rz-input-border-color);
+    background-color: var(--rz-base-background-color);
+    border-radius: 4px;
+    transition: all 0.2s ease-in-out;
+    }
+
+    :deep(.rz-checkbox-box.rz-state-active) {
+    border-color: var(--rz-primary);
+    background-color: var(--rz-primary);
+    }
+
+    :deep(.rz-radiobutton-label), :deep(.rz-checkbox-label) {
+    font-size: 1rem;
+    color: var(--rz-text-color);
+    margin-left: 0.75rem;
+    }
+</style>
+
+@code {
+
+
+
+    [Parameter]
+    public List<QuestionOption> Options { get; set; } = new();
+
+    [Parameter]
+    public bool IsMultiple { get; set; }
+
+    [Parameter]
+    public string SelectedValue { get; set; }
+
+    [Parameter]
+    public IEnumerable<string> SelectedValues { get; set; }
+
+    [Parameter]
+    public EventCallback<string> SelectedValueChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<IEnumerable<string>> SelectedValuesChanged { get; set; }
+
+    [Parameter]
+    public bool ReadOnly { get; set; }
+
+    public const string CHOICE_STYLE = "padding: 0.5rem; margin-block: 5px; border-radius: 5px; cursor:pointer;";
+
+    private string GetChoiceClass(QuestionOption option)
+    {
+        if (ReadOnly)
+            return string.Empty;
+
+        if (IsMultiple)
+            return option.IsChecked ? "selected" : string.Empty;
+
+        return IsSelected(option) ? "selected" : string.Empty;
+    }
+
+    private bool IsSelected(QuestionOption option)
+    {
+        return option.Text == SelectedValue;
+    }
+
+    private async Task OnOptionSelected(QuestionOption option)
+    {
+        if (ReadOnly)
+            return;
+
+        if (IsMultiple)
+        {
+            option.IsChecked = !option.IsChecked;
+            await SelectedValuesChanged.InvokeAsync(Options.Where(x => x.IsChecked).Select(x => x.Text));
+        }
+        else
+        {
+            SelectedValue = option.Text;
+            await SelectedValueChanged.InvokeAsync(SelectedValue);
+        }
+    }
+}

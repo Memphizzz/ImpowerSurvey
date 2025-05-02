@@ -1,0 +1,342 @@
+@page "/shield-deepdive"
+@inject NavigationManager NavigationManager
+
+<PageTitle>@nameof(ImpowerSurvey)</PageTitle>
+
+<style>
+    .shield-deepdive {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .shield-deepdive h1 {
+        color: #096AF2;
+        font-size: 2.5rem;
+        margin-bottom: 1.5rem;
+        text-align: center;
+    }
+
+    .shield-deepdive h2 {
+        color: #096AF2;
+        font-size: 1.8rem;
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+        border-bottom: 2px solid #eaeaea;
+        padding-bottom: 0.5rem;
+    }
+
+    .shield-deepdive h3 {
+        font-size: 1.4rem;
+        margin-top: 1.5rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .shield-deepdive p, .shield-deepdive li {
+        font-size: 1.1rem;
+        line-height: 1.6;
+        margin-bottom: 1rem;
+    }
+
+    .shield-deepdive ul, .shield-deepdive ol {
+        padding-left: 2rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .shield-deepdive li {
+        margin-bottom: 0.5rem;
+    }
+
+    .shield-deepdive code {
+        font-family: monospace;
+        padding: 0.2rem 0.4rem;
+        border-radius: 3px;
+        font-size: 0.9em;
+    }
+
+    .shield-deepdive pre {
+        overflow-x: auto;
+    }
+
+    .shield-deepdive pre code {
+        background-color: transparent;
+        padding: 0;
+        border-radius: 0;
+        display: block;
+    }
+
+    .shield-logo {
+        text-align: center;
+        margin: 2rem 0;
+    }
+
+    .shield-logo svg {
+        height: 120px;
+        width: auto;
+    }
+
+    .shield-card {
+        border-left: 4px solid #096AF2;
+        padding: 1.5rem;
+        margin: 2rem 0;
+        border-radius: 5px;
+    }
+
+    .shield-card h3 {
+        margin-top: 0;
+        color: #096AF2;
+    }
+
+    .back-button {
+        margin-top: 2rem;
+        text-align: center;
+    }
+    
+    .theme-dark .shield-deepdive pre,
+    .theme-dark .shield-deepdive code {
+        background-color: #2a2a2a;
+    }
+    
+    .theme-dark .shield-card {
+        background-color: #2a2a2a;
+    }
+</style>
+
+<div class="shield-deepdive">
+    <h1>SHIELD Deepdive: Technical Implementation of Privacy by Design</h1>
+
+    <h2>What is SHIELD?</h2>
+    <p>
+        SHIELD stands for <strong>S</strong>eparate <strong>H</strong>uman <strong>I</strong>dentities <strong>E</strong>ntirely from <strong>L</strong>inked <strong>D</strong>ata.
+    </p>
+    <p>
+        It is a privacy principle created by Impower.AI that establishes an impenetrable barrier between participant identities and their survey responses. Unlike traditional privacy approaches that rely on permissions and policies, SHIELD implements privacy at the architectural level, making it technically impossible to connect identities to specific responses.
+    </p>
+
+    <h2>Core Principles</h2>
+
+    <h3>1. Complete Separation</h3>
+    <p>
+        Identity information and survey responses are maintained in separate systems with no shared identifiers. This is not merely a policy, but a structural constraint built into the system architecture.
+    </p>
+
+    <h3>2. Double-Blind Architecture</h3>
+    <p>
+        The system operates like a double-blind study:
+    </p>
+    <ul>
+        <li>One side knows who participated (identity management)</li>
+        <li>Another side knows what responses exist (data collection)</li>
+        <li>Neither side can connect the two</li>
+    </ul>
+
+    <h3>3. Anonymous Token Bridge</h3>
+    <p>
+        The only connection between identity and participation is through one-time, anonymized tokens:
+    </p>
+    <ul>
+        <li><strong>Entry Codes</strong>: Allow access to surveys without revealing identity</li>
+        <li><strong>Completion Codes</strong>: Verify participation without connecting to specific responses</li>
+    </ul>
+
+    <h3>4. No Overrides</h3>
+    <p>
+        SHIELD is not permission-based but architectural. Even administrators with full system access cannot connect identities to responses, because the data structures make this connection impossible.
+    </p>
+
+    <h3>5. Visual Reinforcement</h3>
+    <p>
+        UI components (ShieldControl, ShieldPopup) visually communicate this separation, educating users about their privacy protections.
+    </p>
+
+    <div class="shield-card glass-card">
+        <h3>Key Insight</h3>
+        <p>
+            Unlike traditional privacy systems that rely on access controls and permissions, SHIELD builds privacy into the core architecture of the system. This means that even with full administrator access, it's technically impossible to connect an individual's identity to their specific responses.
+        </p>
+    </div>
+
+    <h2>Technical Implementation</h2>
+
+    <h3>Database Design</h3>
+    <p>
+        The database schema is specifically designed to enforce the SHIELD principle:
+    </p>
+
+    <pre class="glass-card"><code>// Identity side
+public DbSet&lt;User&gt; Users { get; set; }
+
+// Data side (no user identifiers)
+public DbSet&lt;Survey&gt; Surveys { get; set; }
+public DbSet&lt;Question&gt; Questions { get; set; }
+public DbSet&lt;Response&gt; Responses { get; set; }
+
+// Bridge mechanisms (using anonymized codes)
+public DbSet&lt;EntryCode&gt; EntryCodes { get; set; }
+public DbSet&lt;CompletionCode&gt; CompletionCodes { get; set; }
+public DbSet&lt;ParticipationRecord&gt; ParticipationRecords { get; set; }</code></pre>
+
+    <p>
+        Critical design decisions:
+    </p>
+    <ul>
+        <li>The <code class="glass-card">Response</code> entity deliberately contains no user identifiers</li>
+        <li>No foreign keys linking identity tables to response tables</li>
+        <li>No queries that can join identity and response data</li>
+    </ul>
+
+    <h3>The Code System: How SHIELD Works in Practice</h3>
+
+    <h4>Entry Codes</h4>
+    <ul>
+        <li>Randomly generated, single-use tokens</li>
+        <li>Allow access to surveys without revealing participant identity</li>
+        <li>The only connection between identity and survey participation</li>
+    </ul>
+
+    <h4>Completion Codes</h4>
+    <ul>
+        <li>Generated upon survey completion</li>
+        <li>Verify participation without connecting to specific responses</li>
+        <li>Allow participation tracking without compromising anonymity</li>
+    </ul>
+
+    <h4>Participation Records</h4>
+    <ul>
+        <li>Track that a user completed a survey without linking to their responses</li>
+        <li>Maintain separate tracking of survey metrics and completion status</li>
+    </ul>
+
+    <h3>Service Layer Separation</h3>
+    <p>
+        Services are designed to maintain strict separation:
+    </p>
+    <ul>
+        <li><strong>UserService</strong>: Handles identity management with no access to response data</li>
+        <li><strong>SurveyService</strong>: Processes responses with no access to identity information</li>
+        <li><strong>SurveyCodeService</strong>: Manages the anonymous code system as the only bridge</li>
+    </ul>
+
+    <p>
+        The submission flow enforces SHIELD through:
+    </p>
+    <pre class="glass-card"><code>public async Task&lt;(bool Success, string Code)&gt; SubmitSurveyAsync(int surveyId, List&lt;Response&gt; responses, string entryCode)
+{
+    // Validate entry code without needing user identity
+    var validCode = await _surveyCodeService.ValidateEntryCodeAsync(entryCode, surveyId);
+    if (!validCode) return (false, null);
+    
+    // Store responses without user identifier
+    await _context.Responses.AddRangeAsync(responses);
+    
+    // Generate completion code (the only "receipt" of participation)
+    var completionCode = await _surveyCodeService.GenerateCompletionCodeAsync(surveyId);
+    
+    return (true, completionCode);
+}</code></pre>
+
+    <h2>Understanding SHIELD Through Analogies</h2>
+
+    <div class="shield-card glass-card">
+        <h3>The Restaurant Analogy</h3>
+        <p>
+            Imagine a restaurant with a unique privacy system:
+            <ul>
+                <li>The host knows who made reservations (identity side)</li>
+                <li>The kitchen only sees anonymous table numbers (data side)</li>
+                <li>The host gives customers a table card (entry code)</li>
+                <li>The kitchen prepares meals for table numbers without knowing who sits there</li>
+                <li>At the end, customers receive a receipt number (completion code)</li>
+                <li>The restaurant can track that all reservations were served without kitchen knowing who ate what</li>
+            </ul>
+        </p>
+    </div>
+
+    <div class="shield-card glass-card">
+        <h3>The Nightclub Analogy</h3>
+        <p>
+            Think of SHIELD like a nightclub with advanced privacy:
+            <ul>
+                <li>Bouncer checks ID at the door (authentication)</li>
+                <li>You receive a wristband (entry code) as anonymous access token</li>
+                <li>Staff inside only know "someone with a valid wristband is here"</li>
+                <li>When leaving, you get an exit stamp (completion code)</li>
+                <li>The club can track attendance without monitoring individual activity</li>
+            </ul>
+        </p>
+    </div>
+
+    <h2>Benefits of SHIELD</h2>
+
+    <div class="row">
+        <div class="col-md-6">
+            <h3>For Organizations</h3>
+            <ul>
+                <li><strong>Increased response rates</strong> due to privacy guarantees</li>
+                <li><strong>More honest feedback</strong> when participants know they can't be identified</li>
+                <li><strong>Reduced liability</strong> around sensitive data</li>
+                <li><strong>Simplified compliance</strong> with privacy regulations</li>
+                <li><strong>Better data quality</strong> through respondent trust</li>
+            </ul>
+        </div>
+        <div class="col-md-6">
+            <h3>For Users</h3>
+            <ul>
+                <li><strong>Complete anonymity</strong> of responses</li>
+                <li><strong>Freedom to provide honest feedback</strong> without fear of identification</li>
+                <li><strong>Protection from data breaches</strong> or misuse</li>
+                <li><strong>Clear visual indicators</strong> of privacy protection</li>
+            </ul>
+        </div>
+    </div>
+
+    <h2>SHIELD Compliance Requirements</h2>
+
+    <h3>Database Requirements</h3>
+    <ul>
+        <li>No direct identifiers in <code class="glass-card">Response</code> or related entities</li>
+        <li>No foreign keys linking identity tables to response tables</li>
+        <li>Code system remains the only bridge between systems</li>
+        <li>No queries that join identity and response data</li>
+    </ul>
+
+    <h3>Service Layer Requirements</h3>
+    <ul>
+        <li>Identity services must not access response data directly</li>
+        <li>Survey/response services must not access identity details</li>
+        <li>Code services must maintain separation when generating/validating codes</li>
+        <li>Any new services must follow the separation pattern</li>
+    </ul>
+
+    <h3>UI Requirements</h3>
+    <ul>
+        <li>Identity information and response data never displayed together</li>
+        <li>SHIELD visualization components maintained or enhanced</li>
+        <li>No UI elements that could connect identities to responses</li>
+        <li>Appropriate messaging about separation included</li>
+    </ul>
+
+    <div class="shield-card glass-badge" style="color:white;">
+        <h3>Our Promise to You</h3>
+        <p>
+            By developing and implementing SHIELD across our products, Impower.AI guarantees that your personal identity remains separate from your data at all times. This allows us to provide valuable services while fully respecting and protecting your privacy.
+        </p>
+        <p>
+            We believe that your trust is essential, which is why we've created SHIELD. We're committed to maintaining the highest standards of data protection and anonymity across all our current and future privacy-related products.
+        </p>
+    </div>
+
+    <div class="back-button">
+        <RadzenButton Click="@(() => NavigationManager.NavigateTo("/"))">
+            Return to Home
+        </RadzenButton>
+    </div>
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        // You can add any initialization logic here if needed
+        base.OnInitialized();
+    }
+}

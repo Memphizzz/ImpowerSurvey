@@ -1,0 +1,100 @@
+@page "/"
+@using ImpowerSurvey.Components.Controls
+@using ImpowerSurvey.Components.Model
+@using ImpowerSurvey.Services
+@inject NavigationManager NavigationManager
+@inject NotificationService NotificationService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>@nameof(ImpowerSurvey)</PageTitle>
+
+<RadzenRow>
+    <RadzenColumn>
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
+            <RadzenText Text="ImpowerSurvey" TextStyle="TextStyle.DisplayH2" Style="color:var(--impower-logo-alt);"/>
+            <ShieldControl/>
+        </RadzenStack>
+    </RadzenColumn>
+</RadzenRow>
+<RadzenRow AlignItems="AlignItems.Center">
+    <RadzenColumn class="glass-card">
+        <RadzenText Text="Secure Anonymous Surveys with Participation Tracking" TextStyle="TextStyle.DisplayH2" TagName="TagName.Auto" Style="font-style: normal; font-weight: bold; font-size: 20px"></RadzenText>
+        <ul class="list-disc pl-5 space-y-2">
+            <li>Create custom surveys with various question types</li>
+            <li>Guaranteed anonymity through unique entry and completion codes</li>
+            <li>Secure data handling with delayed submission and potential AI-assisted text scrambling</li>
+            <li>Easy survey creation interface for administrators</li>
+            <li>Enforced participation without compromising privacy</li>
+            <li>Multiple choice, single choice, rating, and free-form text questions</li>
+            <li>Automatic generation of entry and completion codes</li>
+            <li>Simple, user-friendly interface for survey participants</li>
+            <li>Robust privacy measures to prevent response tracking</li>
+            <li>Accessible design for users of all abilities</li>
+            <li>Data visualization tools for survey creators</li>
+            <li>Scalable for small teams to large organizations</li>
+            <li>No personal data storage - responses completely detached from participants</li>
+            <li>Perfect for sensitive feedback collection in professional environments</li>
+        </ul>
+        <p class="mt-4 font-semibold"> Gather honest feedback while respecting privacy - start your anonymous survey today!</p>
+    </RadzenColumn>
+
+    <RadzenColumn>
+        <RadzenTemplateForm TItem="@UserInfo" Data="@UserInfo" Submit="@OnSubmit">
+            @* ### Entry Code ### *@
+            <RadzenCard class="glass-content" Style="width: 500px; height: 300px; display: flex; flex-direction: column;">
+                <RadzenIcon Icon="contact_support" Style="width: 48px; height: 48px; font-size: 48px; color: var(--rz-text-title-color); align-self: center;"/>
+                <div Style="flex-grow: 1; display: flex; flex-direction: column; justify-content: center;">
+                    <RadzenText Text="Participate in an Anonymous Survey" TextStyle="TextStyle.H6" TagName="TagName.H3" Style="margin-bottom: 0.5rem;"/>
+                    <RadzenText Text="Enter your unique entry code below to access your survey.
+Your honest feedback is valuable and your privacy is our priority." TextStyle="TextStyle.Body1" TagName="TagName.P"/>
+                </div>
+                <RadzenFormField Text="Your Entry Code" Style="margin-top: 5px; margin-bottom: 5px;">
+                    <RadzenTextBox Name="txtEntryCode" @bind-Value="@UserInfo.EntryCode" Placeholder="Your Entry Code"/>
+                    <RadzenRequiredValidator Component="txtEntryCode" Text="" Style="position: absolute"/>
+                </RadzenFormField>
+                <RadzenButton Text="Take Survey" ButtonType="ButtonType.Submit" Icon="east" IsBusy="@IsBusy" BusyText="@Constants.UI.Busy"/>
+            </RadzenCard>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+</RadzenRow>
+@* ### Links ### *@
+<RadzenRow Style="margin-top: 40px">
+    <RadzenColumn Size="12">
+        <RadzenRow>
+            <RadzenColumn Size="6">
+                <RadzenCard>
+                    <RadzenIcon Icon="code" Style="margin-top: 20px; width: 48px; height: 48px; font-size: 48px; color: var(--rz-text-title-color);"/>
+                    <RadzenText Text="See the inner workings" TextStyle="TextStyle.DisplayH6" TagName="TagName.H3"></RadzenText>
+                    <RadzenLink Text="Impower GitHub" Path="https://github.com/impower-ai" Icon="east" Target="_blank" Style="font-size: 18px"/>
+                </RadzenCard>
+            </RadzenColumn>
+            <RadzenColumn Size="6">
+                <RadzenCard>
+                    <RadzenIcon Icon="people_outline" Style="margin-top: 20px; width: 48px; height: 48px; font-size: 48px; color: var(--rz-text-title-color);"/>
+                    <RadzenText Text="Visit the creators" TextStyle="TextStyle.DisplayH6" TagName="TagName.H3"/>
+                    <RadzenLink Text="Impower.AI" Path="https://Impower.AI" Icon="east" Target="_blank" Style="font-size: 18px"/>
+                </RadzenCard>
+            </RadzenColumn>
+        </RadzenRow>
+    </RadzenColumn>
+</RadzenRow>
+
+@code
+{
+    private UserInfo UserInfo { get; } = new();
+    private bool IsBusy { get; set; }
+
+    private async Task OnSubmit()
+    {
+        IsBusy = true;
+        await Task.Yield();
+        var authStateProvider = (CustomAuthStateProvider)AuthStateProvider;
+        var result = await authStateProvider.LoginSurveyParticipantAsync(UserInfo.EntryCode);
+
+        if (result.Successful)
+            NavigationManager.NavigateTo($"/take-survey/{result.Data}");
+        else
+            NotificationService.Notify(NotificationSeverity.Error, "Error", result.Message);
+        IsBusy = false;
+    }
+}

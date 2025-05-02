@@ -1,0 +1,231 @@
+@page "/surveys"
+@using ImpowerSurvey.Services
+@using ImpowerSurvey.Components.Controls
+@using ImpowerSurvey.Components.Model
+@inject NavigationManager NavigationManager
+@inject NotificationService NotificationService
+@inject DialogService DialogService
+@inject SurveyService SurveyService
+@inject SlackService SlackService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>@nameof(ImpowerSurvey)</PageTitle>
+
+<CascadingAuthenticationState>
+    <AuthorizeView Roles="@nameof(Roles.SurveyManager)">
+        <NotAuthorized>
+            <NotAuthorizedControl LogError="true" />
+        </NotAuthorized>
+        <Authorized>
+            <RadzenStack class="rz-p-4" Gap="1rem">
+                <HeaderControl Icon="dashboard" Title="Survey Management" Subtitle="Manage all your surveys in one place">
+                    <BButton Text="Create New Survey" Icon="add_circle" ButtonStyle="ButtonStyle.Primary"
+                             Click="@NavigateToCreateSurvey"/>
+                </HeaderControl>
+
+                <!-- Planned Surveys Section -->
+                <div class="survey-section">
+                    <div class="survey-section-header">
+                        <div class="section-icon-container">
+                            <RadzenIcon Icon="event_note" class="section-icon" />
+                        </div>
+                        <div class="section-title">
+                            <RadzenText TextStyle="TextStyle.H5">Planned Surveys</RadzenText>
+                            <RadzenText TextStyle="TextStyle.Caption">Surveys in preparation or scheduled to start</RadzenText>
+                        </div>
+                        <div class="section-badge">
+                            <RadzenBadge BadgeStyle="BadgeStyle.Info" Text="@PlannedSurveys.Count.ToString()" />
+                        </div>
+                    </div>
+
+                    <div class="survey-grid">
+                        @if (PlannedSurveys.Any())
+                        {
+                            @foreach (var survey in PlannedSurveys)
+                            {
+                                <SurveyCard Survey="survey" IsBusy="@IsBusy" OnSelect="@RowSelect"
+                                            IsSelected="SelectedSurvey != null && SelectedSurvey.Id == survey.Id" />
+                            }
+                        }
+                        else
+                        {
+                            <div class="empty-state">
+                                <div class="empty-state-content">
+                                    <RadzenIcon Icon="pending" Style="font-size: 2rem; color: var(--rz-text-disabled-color);" />
+                                    <RadzenText TextStyle="TextStyle.Body1">No planned surveys available</RadzenText>
+                                    <RadzenButton Text="Create Survey" Icon="add_circle" Size="ButtonSize.Small"
+                                                  Click="@NavigateToCreateSurvey" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Outlined" />
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Running Surveys Section -->
+                <div class="survey-section">
+                    <div class="survey-section-header">
+                        <div class="section-icon-container running">
+                            <RadzenIcon Icon="play_circle" class="section-icon" />
+                        </div>
+                        <div class="section-title">
+                            <RadzenText TextStyle="TextStyle.H5">Running Surveys</RadzenText>
+                            <RadzenText TextStyle="TextStyle.Caption">Currently active surveys collecting responses</RadzenText>
+                        </div>
+                        <div class="section-badge">
+                            <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="@RunningSurveys.Count.ToString()" />
+                        </div>
+                    </div>
+
+                    <div class="survey-grid">
+                        @if (RunningSurveys.Any())
+                        {
+                            @foreach (var survey in RunningSurveys)
+                            {
+                                <SurveyCard Survey="survey" IsBusy="@IsBusy" OnSelect="@RowSelect"
+                                            IsSelected="SelectedSurvey != null && SelectedSurvey.Id == survey.Id" />
+                            }
+                        }
+                        else
+                        {
+                            <div class="empty-state">
+                                <div class="empty-state-content">
+                                    <RadzenIcon Icon="hourglass_empty" Style="font-size: 2rem; color: var(--rz-text-disabled-color);" />
+                                    <RadzenText TextStyle="TextStyle.Body1">No running surveys available</RadzenText>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Completed Surveys Section -->
+                <div class="survey-section">
+                    <div class="survey-section-header">
+                        <div class="section-icon-container completed">
+                            <RadzenIcon Icon="task_alt" class="section-icon" />
+                        </div>
+                        <div class="section-title">
+                            <RadzenText TextStyle="TextStyle.H5">Completed Surveys</RadzenText>
+                            <RadzenText TextStyle="TextStyle.Caption">Surveys that have been closed and are completed</RadzenText>
+                        </div>
+                        <div class="section-badge">
+                            <RadzenBadge BadgeStyle="BadgeStyle.Light" Text="@CompletedSurveys.Count.ToString()" />
+                        </div>
+                    </div>
+
+                    <div class="survey-grid">
+                        @if (CompletedSurveys.Any())
+                        {
+                            @foreach (var survey in CompletedSurveys)
+                            {
+                                <SurveyCard Survey="survey" IsBusy="@IsBusy" OnSelect="@RowSelect"
+                                            IsSelected="SelectedSurvey != null && SelectedSurvey.Id == survey.Id" />
+                            }
+                        }
+                        else
+                        {
+                            <div class="empty-state">
+                                <div class="empty-state-content">
+                                    <RadzenIcon Icon="inventory_2" Style="font-size: 2rem; color: var(--rz-text-disabled-color);" />
+                                    <RadzenText TextStyle="TextStyle.Body1">No completed surveys yet</RadzenText>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </RadzenStack>
+        </Authorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+
+<style>
+    .survey-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1rem;
+        margin: 1rem;
+    }
+
+    .survey-section {
+        background-color: var(--rz-base-background-color);
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        overflow: hidden;
+        transition: all 0.3s ease;
+        margin-bottom: 2rem;
+    }
+
+        .survey-section:hover {
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        }
+
+    .survey-section-header {
+        display: flex;
+        align-items: center;
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid var(--rz-border-300);
+        background-color: rgba(var(--rz-primary-rgb), 0.03);
+    }
+
+    .section-icon-container {
+        width: 3rem;
+        height: 3rem;
+        border-radius: 50%;
+        background-color: rgba(var(--rz-info-rgb), 0.15);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-right: 1rem;
+    }
+
+        .section-icon-container.running {
+            background-color: rgba(var(--rz-success-rgb), 0.15);
+        }
+
+        .section-icon-container.completed {
+            background-color: rgba(var(--rz-secondary-lighter-rgb), 0.3);
+        }
+
+    .section-icon {
+        font-size: 1.6rem;
+        color: var(--rz-info);
+    }
+
+    .section-icon-container.running .section-icon {
+        color: var(--rz-success);
+    }
+
+    .section-icon-container.completed .section-icon {
+        color: var(--rz-secondary);
+    }
+
+    .section-title {
+        flex: 1;
+    }
+
+        .section-title :deep(h5) {
+            margin: 0;
+            font-weight: 600;
+        }
+
+        .section-title :deep(p) {
+            margin: 0;
+            opacity: 0.8;
+        }
+
+    .section-badge {
+        margin-left: 1rem;
+    }
+
+    .empty-state {
+        grid-column: 1 / -1;
+        padding: 3rem;
+        text-align: center;
+    }
+
+    .empty-state-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+    }
+</style>

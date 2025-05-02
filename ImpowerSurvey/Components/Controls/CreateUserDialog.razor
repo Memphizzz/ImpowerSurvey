@@ -1,0 +1,73 @@
+@using ImpowerSurvey.Components.Model
+@using ImpowerSurvey.Components.Utilities
+@using ImpowerSurvey.Services
+@inject UserService UserService
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+<RadzenCard Style="min-height: 230px;">
+    @if (User == null)
+    {
+        <RadzenStack Orientation="Orientation.Horizontal" Style="@Constants.UI.StyleFlexGrowRow" JustifyContent="JustifyContent.Center">
+            <RadzenProgressBarCircular Mode="ProgressBarMode.Indeterminate" ShowValue="false"/>
+            <RadzenText Style="align-self: center;" Text="Fetching Data, please wait.."/>
+        </RadzenStack>
+    }
+    else
+    {
+        <RadzenTemplateForm TItem="User" Data="@User" Submit="@OnSubmit">
+            <RadzenStack>
+                <RadzenFormField Text="Name">
+                    <RadzenTextBox Name="txtUserName" @bind-Value="@User.Username"/>
+                    <RadzenRequiredValidator Component="txtUserName" Text="" Style="position: absolute"/>
+                </RadzenFormField>
+
+                <RadzenFormField Text="Display Name (optional)">
+                    <RadzenTextBox @bind-Value="@User.DisplayName"/>
+                </RadzenFormField>
+
+                @*  <RadzenFormField Text="Validation">
+                    <RadzenDropDown Name="ddParticipationTypes" TValue="ParticipationTypes" @bind-Value="@User.Emails[]" Data=@(Enum.GetValues(typeof(ParticipationTypes))) />
+                    <RadzenRequiredValidator Component="ddParticipationTypes" Text="" Style="position: absolute" />
+                </RadzenFormField>
+ *@
+                @*   <RadzenFormField Text="@()Email" Style="margin-top: 5px;">
+                    <RadzenTextBox Name="txtEmail" @bind-Value="@User.Email"/>
+                    <RadzenRequiredValidator Component="txtEmail" Text="" Style="position: absolute"/>
+                    <RadzenCustomValidator Component="txtEmail" Text="@Constants.UI.InvalidEmailAddress" Validator="EmailValidator"/>
+                </RadzenFormField>
+ *@
+                <RadzenFormField Text="Role">
+                    <RadzenDropDown Name="ddRoles" TValue="Roles" @bind-Value=@User.Role Data=@(Enum.GetValues(typeof(Roles)).Cast<Roles>().Skip(1))/>
+                    <RadzenRequiredValidator Component="ddRoles" Text="" Style="position: absolute"/>
+                </RadzenFormField>
+
+                <RadzenButton ButtonType="ButtonType.Submit" IsBusy="@IsBusy" BusyText="@Constants.UI.Busy" Text="Create User"/>
+            </RadzenStack>
+        </RadzenTemplateForm>
+    }
+</RadzenCard>
+
+@code {
+    private User User { get; } = new() { Role = Roles.SurveyManager };
+    private RadzenTemplateForm<User> TemplateForm { get; set; }
+    private string ValidationMessage { get; set; }
+    private bool? IsValidIntegrationEmail { get; set; }
+    private bool IsBusy { get; set; }
+
+    private async Task OnSubmit()
+    {
+        IsBusy = true;
+        await Task.Yield();
+
+        User.Email = User.Email.ToLower();
+        if (string.IsNullOrWhiteSpace(User.DisplayName))
+            User.DisplayName = User.Username;
+
+        var result = await UserService.CreateUserAsync(User.Username, User.DisplayName, User.Email, User.Role);
+        DialogService.Close(result);
+        IsBusy = false;
+    }
+
+    private bool EmailValidator() => User.Email.IsValidEmail();
+}

@@ -1,0 +1,55 @@
+@inject DialogService DialogService
+
+<style>
+    .shield-control {
+        display: flex;
+        align-items: center;
+        margin: 0;
+    }
+    
+    .shield-button {
+        background-color: green;
+        border-radius: 4px;
+        padding: 6px 12px;
+        font-size: 0.9rem;
+        color: white;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-left: 0.7rem;
+        cursor: pointer;
+    }
+    
+    .shield-icon {
+        font-size: 3.2rem;
+        color: var(--rz-primary);
+        cursor: pointer;
+    }
+    
+    .shield-verified {
+        margin: 0;
+        font-weight: bold;
+        font-size: 0.9rem;
+    }
+    
+    .shield-click {
+        font-size: 0.7rem;
+        margin-top: 2px;
+    }
+</style>
+
+<div class="shield-control" @onclick="OpenShieldPopup">
+    <RadzenIcon Icon="encrypted" class="shield-icon" />
+    <div class="shield-button">
+        <span class="shield-verified">@Constants.SHIELD.VerifiedText</span>
+        <span class="shield-click">@Constants.SHIELD.DesktopClickText</span>
+    </div>
+</div>
+
+@code {
+    private void OpenShieldPopup()
+    {
+        DialogService.OpenAsync<ShieldPopup>(Constants.SHIELD.DialogTitle, null, 
+                                             new DialogOptions { Height = "80%", Width = "60%", AutoFocusFirstElement = false });
+    }
+}

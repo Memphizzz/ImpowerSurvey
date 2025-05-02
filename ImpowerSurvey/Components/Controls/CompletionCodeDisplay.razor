@@ -1,0 +1,403 @@
+@inject NotificationService NotificationService
+@inject IJSUtilityService JSUtilityService
+@using ImpowerSurvey.Services
+
+<RadzenStack class="processing-animation glass-card" Style="padding: 10px; padding-top: 20px;">
+    <div class="animation-step visible-step">
+        <div class="icon-container">
+            @if (CurrentStep == 1)
+            {
+                <RadzenProgressBarCircular class="spinner" Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate"/>
+            }
+            <RadzenIcon Icon="circle" class="@($"placeholder-icon {(CurrentStep < 1 ? "visible" : "hidden")}")"/>
+            <RadzenIcon Icon="shield" class="@($"step-icon {(CurrentStep >= 1 ? "visible" : "hidden")}")"/>
+        </div>
+        <div class="step-content">
+            <RadzenText TextStyle="TextStyle.Body1" class="step-title">
+                Applying SHIELD Protection
+            </RadzenText>
+            <div class="step-description-container">
+                @if (CurrentStep >= 1)
+                {
+                    <RadzenText TextStyle="TextStyle.Caption" class="step-description">
+                        <span class="@(CurrentStep == 1 ? "typing-animation" : "")">Separating your identity from your survey responses</span>
+                    </RadzenText>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="animation-step visible-step">
+        <div class="icon-container">
+            @if (CurrentStep == 2)
+            {
+                <RadzenProgressBarCircular class="spinner" Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate"/>
+            }
+            <RadzenIcon Icon="circle" class="@($"placeholder-icon {(CurrentStep < 2 ? "visible" : "hidden")}")"/>
+            <RadzenIcon Icon="https" class="@($"step-icon {(CurrentStep >= 2 ? "visible" : "hidden")}")"/>
+        </div>
+        <div class="step-content">
+            <RadzenText TextStyle="TextStyle.Body1" class="step-title">
+                Transmitting Securely
+            </RadzenText>
+            <div class="step-description-container">
+                @if (CurrentStep >= 2)
+                {
+                    <RadzenText TextStyle="TextStyle.Caption" class="step-description">
+                        <span class="@(CurrentStep == 2 ? "typing-animation" : "")">Sending your responses through encrypted HTTPS</span>
+                    </RadzenText>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="animation-step visible-step">
+        <div class="icon-container">
+            @if (CurrentStep == 3)
+            {
+                <RadzenProgressBarCircular class="spinner" Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate"/>
+            }
+            <RadzenIcon Icon="circle" class="@($"placeholder-icon {(CurrentStep < 3 ? "visible" : "hidden")}")"/>
+            <RadzenIcon Icon="key" class="@($"step-icon {(CurrentStep >= 3 ? "visible" : "hidden")}")"/>
+        </div>
+        <div class="step-content">
+            <RadzenText TextStyle="TextStyle.Body1" class="step-title">
+                Retrieving Completion Code
+            </RadzenText>
+            <div class="step-description-container">
+                @if (CurrentStep >= 3)
+                {
+                    <RadzenText TextStyle="TextStyle.Caption" class="step-description">
+                        <span class="@(CurrentStep == 3 ? "typing-animation" : "")">Assigning your unique verification code</span>
+                    </RadzenText>
+                }
+            </div>
+        </div>
+    </div>
+</RadzenStack>
+
+@if (!IsAnimating)
+{
+    <RadzenCard Style="margin-top: 2rem; background-color: var(--rz-success-lighter); border: none;">
+        <RadzenText TextStyle="TextStyle.H5">Survey Successfully Submitted</RadzenText>
+        <RadzenText TextStyle="TextStyle.Body1">
+            Thank you for completing this survey. Please keep your completion code in a safe place.
+        </RadzenText>
+
+        <div class="completion-code-box">
+            <div>Your Completion Code:</div>
+            <div class="completion-code-wrapper">
+                <div class="completion-code">
+                    <span>@CompletionCode</span>
+                </div>
+            </div>
+            <RadzenButton Text="Copy Code" Icon="content_copy" Click="CopyCodeToClipboard"
+            Style="margin-top: 0.75rem;" Size="ButtonSize.Small"/>
+        </div>
+
+        <ul style="padding-left: 1.5rem;">
+            <li>Share it only with your designated survey manager when requested.</li>
+            <li>Keep it confidential; it's unique to you and this survey.</li>
+            <li>If anyone else requests this code, please verify with your survey manager first.</li>
+        </ul>
+        <div id="@Constants.UI.EndElement"></div>
+    </RadzenCard>
+}
+
+<style>
+    .processing-animation {
+    margin-top: 1rem;
+    overflow: hidden;
+    }
+
+    /* Mobile-specific adjustments */
+    :global(.mobile) .processing-animation {
+    height: 160px;
+    }
+
+    .animation-step {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    opacity: 0.6;
+    visibility: visible;
+    transition: opacity 0.4s ease;
+    }
+
+    .visible-step {
+    opacity: 1;
+    visibility: visible;
+    }
+
+    /* States */
+    .animation-step.completed {
+    opacity: 0.6;
+    visibility: visible;
+    }
+
+    .animation-step.active {
+    opacity: 1;
+    visibility: visible;
+    z-index: 10;
+    white-space: break-spaces;
+    }
+
+    .animation-step.completed .icon-container {
+    width: 1.2rem;
+    height: 1.2rem;
+    }
+
+    .animation-step.completed .step-icon,
+    .animation-step.completed .placeholder-icon {
+    font-size: 1.2rem;
+    }
+
+    .animation-step.completed .step-content {
+    transform: scale(0.85);
+    transform-origin: center;
+    }
+
+    /* Description is always visible */
+    .animation-step.completed .step-description {
+    display: block;
+    }
+
+    .icon-container {
+    position: relative;
+    width: 2rem;
+    height: 2rem;
+    margin-bottom: 10px;
+    }
+
+    .spinner {
+    position: absolute;
+    width: 3.5rem !important;
+    height: 3.5rem !important;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    transition: opacity .5s ease;
+    }
+
+    .spinner.fade-out {
+    opacity: 0;
+    }
+
+    .step-icon.pulse {
+    animation: pulse-effect 1s 1 forwards;
+    }
+
+    .step-icon, .placeholder-icon {
+    font-size: 2.5rem;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+    position: absolute;
+    z-index: 2;
+    }
+
+    .step-icon {
+    color: var(--rz-success);
+    font-size: 2rem;
+    }
+
+    .placeholder-icon {
+    color: var(--rz-secondary-light);
+    opacity: 0.5;
+    }
+
+    .visible {
+    opacity: 1;
+    transform: scale(1);
+    }
+
+    .hidden {
+    opacity: 0;
+    transform: scale(0.5);
+    }
+
+    .step-content {
+    transition: transform 0.4s ease;
+    text-align: center;
+    }
+
+    .step-title {
+    font-weight: 500;
+    margin: 0;
+    white-space: nowrap;
+    }
+
+    .step-description-container {
+        height: 1.5em;
+        margin: 0.25rem 0 0 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    .step-description {
+        color: var(--rz-text-secondary-color);
+        text-align: center;
+        margin: 0;
+        line-height: 1;
+    }
+    
+    .typing-animation {
+        display: inline-block;
+        overflow: hidden;
+        white-space: nowrap;
+        width: 0;
+        animation: typing 0.75s cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
+    }
+    
+    .step-description span {
+        display: inline-block;
+        /*white-space: nowrap;*/
+        font-size: inherit;
+        vertical-align: middle;
+        position: static;
+    }
+
+    .submission-progress {
+    position: absolute;
+    bottom: 1.5rem;
+    left: 2rem;
+    right: 2rem;
+    height: 6px;
+    }
+
+    .completion-code-box {
+    background-color: var(--rz-warning-lighter);
+    border: 1px solid var(--rz-warning-light);
+    border-radius: 6px;
+    padding: 1rem;
+    text-align: center;
+    margin: 1.5rem 0;
+    }
+
+    .completion-code-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+    margin: 0.5rem auto;
+    text-align: center;
+    }
+
+    .completion-code-wrapper::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+    }
+
+    .completion-code {
+    font-family: monospace;
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    position: relative;
+    background-color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    display: inline-block;
+    white-space: nowrap;
+    animation: reveal 0.5s ease-out;
+    }
+
+    .completion-code::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: repeating-linear-gradient( 45deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.1) 5px, rgba(255, 255, 255, 0.7) 5px, rgba(255, 255, 255, 0.7) 10px );
+    z-index: 0;
+    border-radius: 4px;
+    pointer-events: none;
+    }
+
+    .completion-code span {
+    position: relative;
+    z-index: 1;
+    mix-blend-mode: difference;
+    color: #333;
+    text-shadow: 0 0 1px rgba(0,0,0,0.3);
+    }
+</style>
+
+@code {
+
+    [Parameter]
+    public string CompletionCode { get; set; }
+
+    [Parameter]
+    public bool IsMobile { get; set; } = false;
+
+    private bool IsAnimating { get; set; } = true;
+    private int CurrentStep { get; set; } = 0;
+    private bool IsFadingSpinner { get; set; } = false;
+    private double ProgressValue => CurrentStep / 4.0 * 100;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await StartAnimation();
+    }
+
+    private string GetStepClass(int step)
+    {
+        if (step == CurrentStep)
+            return "active";
+
+        return step < CurrentStep ? "completed" : "";
+    }
+
+    private async Task StartAnimation()
+    {
+        IsAnimating = true;
+
+        // Step 1: Applying SHIELD Protection
+        CurrentStep = 1;
+        StateHasChanged();
+        //await Task.Delay(1000);
+        await Task.Delay(1000);
+
+        // Step 2: Transmitting Securely
+        CurrentStep = 2;
+        StateHasChanged();
+        await Task.Delay(1500);
+
+        // Step 3: Retrieving Completion Code
+        CurrentStep = 3;
+        StateHasChanged();
+        await Task.Delay(1000);
+
+        CurrentStep = 4;
+        StateHasChanged();
+        await Task.Yield();
+
+        // Complete animation and show code
+        IsAnimating = false;
+        StateHasChanged();
+        await Task.Yield();
+
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(250));
+            await JSUtilityService.ScrollToElement(Constants.UI.EndElement);
+            if (!IsMobile)
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Success,
+                    Summary = Constants.Survey.Submitted,
+                    Detail = Constants.Survey.SubmittedNote,
+                    Duration = -1
+                });
+            }
+        });
+    }
+
+    private async Task CopyCodeToClipboard()
+    {
+        await JSUtilityService.CopyToClipboard(CompletionCode);
+        NotificationService.Notify(NotificationSeverity.Success, Constants.UI.Success, Constants.CompletionCodes.CopiedClipboard);
+    }
+
+}

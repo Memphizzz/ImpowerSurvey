@@ -1,0 +1,59 @@
+@using ImpowerSurvey.Components.Model
+@using ImpowerSurvey.Services
+@inject DialogService DialogService
+@inject SurveyCodeService SurveyCodeService
+@inject SurveyService SurveyService
+@inject SlackService SlackService
+@inject NotificationService NotificationService
+@inject IJSRuntime JsRuntime
+
+<RadzenCard Style="min-height: 200px;">
+    @if (Survey == null)
+    {
+        <RadzenStack Orientation="Orientation.Horizontal" Style="@Constants.UI.StyleFlexGrowRow" JustifyContent="JustifyContent.Center">
+            <RadzenProgressBarCircular Mode="ProgressBarMode.Indeterminate" ShowValue="false"/>
+            <RadzenText Style="align-self: center;" Text="Fetching Data, please wait.."/>
+        </RadzenStack>
+    }
+    else
+    {
+        <RadzenRow>
+            <RadzenColumn Size="8">
+                <RadzenStack Style="@Constants.UI.StyleFlexGrowRow">
+                    <RadzenText Text="@Survey.Title"/>
+                    <RadzenListBox TValue="ParticipantsListItem" Data="ParticipantsList" Style="max-height: 400px;">
+                        <Template>
+                            <RadzenRow>
+                                <RadzenColumn Size="11">
+                                    <RadzenText Text="@((context as ParticipantsListItem)!.Id)"/>
+                                </RadzenColumn>
+                                <RadzenColumn Size="1">
+                                    <RadzenIcon Icon="@((context as ParticipantsListItem)!.HasParticipated ? "check" : "unknown_med")" IconStyle="@((context as ParticipantsListItem)!.HasParticipated ? IconStyle.Success : IconStyle.Warning)"/>
+                                </RadzenColumn>
+                            </RadzenRow>
+                        </Template>
+                    </RadzenListBox>
+                </RadzenStack>
+            </RadzenColumn>
+            <RadzenColumn Size="4">
+                <RadzenChart ColorScheme="ColorScheme.Pastel">
+                    <RadzenPieSeries TItem="ChartItem" Data="@ChartData" ValueProperty="Value" Title="Category" CategoryProperty="Title"/>
+                </RadzenChart>
+            </RadzenColumn>
+        </RadzenRow>
+        <RadzenRow>
+            <RadzenStack Style="@Constants.UI.StyleFlexGrowCol">
+                <RadzenAlert AlertStyle="AlertStyle.Success" AllowClose="false">
+                    <RadzenStack Gap="0">
+                        <RadzenText TextStyle="TextStyle.H5">Participation</RadzenText>
+                        <RadzenText>EntryCodes: @Stats.UsedEntryCodes Used / @Stats.IssuedEntryCodes Issued (@Stats.EntryCodeUsagePercentage)</RadzenText>
+                        @if (Survey.ParticipationType == ParticipationTypes.Manual)
+                        {
+                            <RadzenText>Submitted CompletionCodes: @Stats.SubmittedCompletionCodes (@Stats.CompletionCodeSubmissionPercentage)</RadzenText>
+                        }
+                    </RadzenStack>
+                </RadzenAlert>
+            </RadzenStack>
+        </RadzenRow>
+    }
+</RadzenCard>

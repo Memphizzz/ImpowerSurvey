@@ -1,0 +1,121 @@
+@page "/admin/logs"
+@using ImpowerSurvey.Components.Controls
+@using ImpowerSurvey.Components.Model
+@using ImpowerSurvey.Components.Utilities
+@using ImpowerSurvey.Services
+@using Microsoft.Extensions.Logging
+
+@inject ILogService LogService
+@inject DialogService DialogService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>@nameof(ImpowerSurvey)</PageTitle>
+
+<CascadingAuthenticationState>
+    <AuthorizeView Roles="@nameof(Roles.Admin)">
+        <NotAuthorized>
+            <NotAuthorizedControl LogError="true"/>
+        </NotAuthorized>
+        <Authorized>
+            <RadzenStack Orientation="Orientation.Vertical" Gap="1rem" Class="rz-p-4">
+                <HeaderControl Icon="analytics" Title="System Logs" Subtitle="Manage and view system logs while respecting SHIELD principles">
+                    <RadzenButton Text="Refresh Logs" Click="@LoadLogsAsync" ButtonStyle="ButtonStyle.Primary" Class="w-100"/>
+                </HeaderControl>
+
+                <RadzenDataGrid Data="@logs" TItem="Log" AllowPaging="true" PageSize="10" IsLoading="@isLoading"
+                                AllowSorting="true" AllowFiltering="true" FilterMode="FilterMode.SimpleWithMenu">
+                    <Columns>
+                        <RadzenDataGridColumn TItem="Log" Property="Id" Title="ID" Width="100px" TextAlign="TextAlign.Right"/>
+                        <RadzenDataGridColumn TItem="Log" Property="Timestamp" Title="Time" Width="180px" FormatString="@Constants.UI.NiceDateTime">
+                            <Template Context="log">
+                                @log.Timestamp.ToProviderLocal(AuthStateProvider).ToString(Constants.UI.NiceDateTime)
+                            </Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="Log" Property="Level" Title="Level" Width="140px">
+                            <Template Context="log">
+                                <RadzenBadge BadgeStyle="@GetBadgeStyle(log.Level)" Text="@log.Level"/>
+                            </Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="Log" Property="Source" Title="Source" Width="150px"/>
+                        <RadzenDataGridColumn TItem="Log" Property="Message" Title="Message"/>
+                        <RadzenDataGridColumn TItem="Log" Property="User" Title="User" Width="120px"/>
+                        <RadzenDataGridColumn TItem="Log" Title="SHIELD" Width="110px" TextAlign="TextAlign.Center">
+                            <Template Context="log">
+                                @if (log.ContainsIdentityData || log.ContainsResponseData)
+                                {
+                                    <RadzenIcon Icon="security"/>
+                                }
+                            </Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="Log" Title="Details" Width="100px" TextAlign="TextAlign.Center">
+                            <Template Context="log">
+                                <RadzenButton ButtonStyle="ButtonStyle.Light" Icon="visibility" Size="ButtonSize.Small"
+                                              Click="@(() => ShowDetails(log))"/>
+                            </Template>
+                        </RadzenDataGridColumn>
+                    </Columns>
+                </RadzenDataGrid>
+            </RadzenStack>
+        </Authorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+
+@code {
+    private List<Log> logs = [];
+    private bool isLoading;
+    private DateTime StartDate;
+    private DateTime EndDate;
+    private string SelectedLevel;
+    private string SelectedSource;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var today = CustomAuthStateProvider.Get(AuthStateProvider).GetLocalNow().Date;
+        StartDate = today.AddDays(-7);
+        EndDate = today.AddDays(1);
+
+        await LoadLogsAsync();
+    }
+
+    private async Task LoadLogsAsync()
+    {
+        isLoading = true;
+
+        try
+        {
+            logs = await LogService.GetLogsAsync(StartDate.ToProviderUtc(AuthStateProvider), EndDate.ToProviderUtc(AuthStateProvider), SelectedLevel, SelectedSource);
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ShowDetails(Log log)
+    {
+        DialogService.Open<LogDetailsDialog>("Log Details", new Dictionary<string, object> { { "Log", log } },
+                                             new DialogOptions { Width = "700px", CloseDialogOnEsc = true, CloseDialogOnOverlayClick = true });
+    }
+
+    private BadgeStyle GetBadgeStyle(string level)
+    {
+        if (Enum.TryParse<LogLevel>(level, out var logLevel))
+        {
+            return logLevel switch
+            {
+                LogLevel.Information => BadgeStyle.Info,
+                LogLevel.Warning     => BadgeStyle.Warning,
+                LogLevel.Error       => BadgeStyle.Danger,
+                LogLevel.Critical    => BadgeStyle.Danger,
+                LogLevel.Debug       => BadgeStyle.Light,
+                LogLevel.Trace       => BadgeStyle.Light,
+                LogLevel.None        => BadgeStyle.Secondary,
+                var _                => BadgeStyle.Secondary
+            };
+        }
+
+        return BadgeStyle.Secondary;
+    }
+
+}

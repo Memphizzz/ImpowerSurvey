@@ -1,0 +1,87 @@
+@using ImpowerSurvey.Components.Model
+@using ImpowerSurvey.Services
+@using ImpowerSurvey.Components.Utilities
+@inject DialogService DialogService
+@inject SurveyService SurveyService
+@inject NavigationManager NavigationManager
+@inject NotificationService NotificationService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<RadzenCard class="glass-card" @onclick="@(() => OnSelect.InvokeAsync(Survey))" 
+            Style=@($"height: 100%; display: flex; flex-direction: column; justify-content: space-between;{(IsSelected ? "border: 2px solid var(--rz-primary);" : "border: 2px solid var(--rz-base);")}")>
+    <RadzenStack JustifyContent="JustifyContent.SpaceBetween" Gap="1rem" Style="height: 100%;">
+        <RadzenStack Gap="0.5rem">
+            <RadzenText TextStyle="TextStyle.H6" Style="margin: 0;">@Survey.Title</RadzenText>
+            <RadzenText TextStyle="TextStyle.Caption" Style="margin: 0;">@Survey.Description</RadzenText>
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                <RadzenBadge BadgeStyle="@Survey.State.GetSurveyStateBadgeStyle()" Text="@Survey.State.ToString()" />
+                <RadzenText TextStyle="TextStyle.Caption" Style="margin: 0;">@Survey.Id.ToString()[Math.Max(0, Survey.Id.ToString().Length - 5)..]</RadzenText>
+            </RadzenStack>
+            <RadzenText TextStyle="TextStyle.Caption" Style="margin: 0;">Created: @Survey.CreationDate.ToProviderLocal(AuthStateProvider).ToString(Constants.UI.NiceDate)</RadzenText>
+            <RadzenText TextStyle="TextStyle.Caption" Style="margin: 0;">Manager: @Survey.Manager.DisplayName</RadzenText>
+        </RadzenStack>
+        
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" JustifyContent="JustifyContent.End">
+            <RadzenButton Icon="@Survey.GetPrimaryActionIcon()" 
+                          Text="@Survey.GetPrimaryActionText()" 
+                          Click="@(e => HandlePrimaryAction(Survey))"
+                          ButtonStyle="ButtonStyle.Light" 
+                          Size="ButtonSize.Small" 
+                          IsBusy="@IsBusy" />
+        </RadzenStack>
+    </RadzenStack>
+</RadzenCard>
+
+@code {
+    [Parameter]
+    public Survey Survey { get; set; }
+    
+    [Parameter]
+    public bool IsSelected { get; set; }
+
+    [Parameter]
+    public bool IsBusy { get; set; }
+    
+    [Parameter]
+    public EventCallback<Survey> OnSelect { get; set; }
+    
+    private void HandlePrimaryAction(Survey survey)
+    {
+        switch (survey.State)
+        {
+            case SurveyStates.Created:
+            case SurveyStates.Scheduled:
+                EditSurvey(survey);
+                break;
+            case SurveyStates.Running:
+                ShowParticipation(survey);
+                break;
+            case SurveyStates.Closed:
+                ShowResults(survey);
+                break;
+        }
+    }
+    
+    private void EditSurvey(Survey survey)
+    {
+        NavigationManager.NavigateTo($"/edit-survey/{survey.Id}");
+    }
+    
+    private void ShowParticipation(Survey survey)
+    {
+        DialogService.OpenAsync<ParticipationDialog>("Survey Participation",
+            new Dictionary<string, object> { { "SurveyId", survey.Id } },
+            new DialogOptions
+            {
+                AutoFocusFirstElement = true, 
+                CloseDialogOnEsc = true,
+                CloseDialogOnOverlayClick = true, 
+                ShowClose = true
+            });
+    }
+    
+    private void ShowResults(Survey survey)
+    {
+        NavigationManager.NavigateTo($"/survey-results/{survey.Id}");
+    }
+}

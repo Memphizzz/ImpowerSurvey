@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <RunConfiguration>
+    <EnvironmentVariables>
+      <IS_SCALE_OUT>true</IS_SCALE_OUT>
+      <IS_HOSTNAME>test-hostname</IS_HOSTNAME>
+      <IS_PORT>12345</IS_PORT>
+    </EnvironmentVariables>
+  </RunConfiguration>
+</RunSettings>

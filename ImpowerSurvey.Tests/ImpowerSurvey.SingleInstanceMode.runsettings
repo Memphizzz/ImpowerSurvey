@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <RunConfiguration>
+    <EnvironmentVariables>
+      <!-- Set IS_SCALE_OUT to false to enable SingleInstanceMode -->
+      <IS_SCALE_OUT>false</IS_SCALE_OUT>
+      <IS_HOSTNAME>test-hostname</IS_HOSTNAME>
+      <IS_PORT>12345</IS_PORT>
+    </EnvironmentVariables>
+  </RunConfiguration>
+</RunSettings>

@@ -1,0 +1,33 @@
+@inject NavigationManager NavigationManager
+
+<RadzenAlert AlertStyle="AlertStyle.Base" AllowClose="false" Style="padding-left: 20px; padding-right: 20px; margin: 0px;">
+    <RadzenLabel Text="@Constants.SHIELD.WhatIsHeader" Style="color: #096AF2; font-size: x-large; font-weight: 700;"/>
+    <p>
+        SHIELD is a privacy principle created by Impower.AI, standing for <br/>"<strong>S</strong>eparate <strong>H</strong>uman <strong>I</strong>dentities <strong>E</strong>ntirely from <strong>L</strong>inked <strong>D</strong>ata."<br/>
+        In simple terms, it's our way of building an impenetrable wall between who you are and the data you provide across our products, including ImpowerSurvey and ImpowerRetro.
+    </p>
+    <p/>
+    <RadzenLabel Text="@Constants.SHIELD.HowProtectsHeader" Style="color: #096AF2; font-size: x-large; font-weight: 700;"/>
+    <ul>
+        <li><strong>Complete Anonymity</strong>: We've designed our systems so your identity is never connected to your responses or contributions. It's like dropping an anonymous letter into a mailbox – once it's in, no one, not even us, can trace it back to you.</li>
+        <li><strong>Participation Without Identification</strong>: Our SHIELD principle allows us to track participation without knowing who the participants are. It's like counting how many people attended an event without recording their names.</li>
+        <li><strong>Secure Access</strong>: You'll receive unique codes to access our platforms. We've ensured these codes aren't linked to your identity, maintaining your anonymity throughout your interaction with our products.</li>
+        <li><strong>Data Protection</strong>: Following our SHIELD principle, your data is stored entirely separately from any identifying information. Imagine putting your contributions in one locked box and your name in another – with no way to connect the two.</li>
+        <li><strong>Honest Feedback Encouraged</strong>: Because of this separation we've implemented, you can feel completely free to give honest, unfiltered feedback or contributions without any concerns about them being traced back to you.</li>
+    </ul>
+    <RadzenLabel Text="@Constants.SHIELD.PromiseHeader" Style="color: #096AF2; font-size: x-large; font-weight: 700;"/>
+    <p>@Constants.SHIELD.PromiseStatement</p>
+    <p>@Constants.SHIELD.TrustStatement</p>
+    <p>@Constants.SHIELD.ThankYouStatement</p>
+    <br/>
+
+    <RadzenCard >
+        <RadzenStack Gap="0">
+            <RadzenText>
+                <strong>@Constants.SHIELD.LearnMoreHeader</strong>
+            </RadzenText>
+            <RadzenLabel>@Constants.SHIELD.LearnMoreDesktopText</RadzenLabel>
+            <RadzenButton Variant="Variant.Outlined" Style="margin-top: 5px; width: 500px;" Click="@(() => NavigationManager.NavigateTo(Constants.SHIELD.DeepDiveUrl))">@Constants.SHIELD.LearnMoreButtonText</RadzenButton>
+        </RadzenStack>
+    </RadzenCard>
+</RadzenAlert>

@@ -1,0 +1,47 @@
+# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
+# More GitHub Actions for Azure: https://github.com/Azure/actions
+
+name: Build ImpowerSurvey
+
+# Automatic build on push to main, no deployment
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # This is important for GitInfo to work 
+
+      - name: Set up .NET Core
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.x'
+
+      - name: Build
+        run: dotnet build --configuration Release
+
+      - name: Run UnitTests
+        run: dotnet test --logger "console;verbosity=detailed"
+
+      - name: Publish
+        run: dotnet publish -c Release -o ${{env.DOTNET_ROOT}}/myapp
+
+      - name: Upload artifact for deployment
+        uses: actions/upload-artifact@v4
+        with:
+          name: .net-app
+          path: ${{env.DOTNET_ROOT}}/myapp
+          retention-days: 5
+      
+      - name: Build Complete - DSS Warning
+        run: |
+          echo "::warning::✅ Build complete and artifact saved!"
+          echo "::warning::⚠️ IMPORTANT: To deploy, use the 'Deploy ImpowerSurvey to Azure' workflow."
+          echo "::warning::⚠️ IMPORTANT: Before deploying, ensure all surveys are stopped and DSS queue is empty."
+          echo "::warning::⚠️ IMPORTANT: Check the Admin → DSS Status page before confirming deployment."

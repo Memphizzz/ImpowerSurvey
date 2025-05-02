@@ -1,0 +1,41 @@
+<RadzenRow Style=@($"margin-bottom: {MarginBottomPx}px; margin-top: {MarginTopPx}px;")>
+    <RadzenColumn Size="12">
+        <RadzenCard class="glass-card" Style="padding: 5px;">
+            <RadzenStack Gap="0">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="@JustifyContent" Gap="0.5rem">
+                    <RadzenText Style=@($"color: var(--rz-primary); font-size: 1.5rem; font-weight: 600;{(JustifyContent != JustifyContent.Center ? "margin-left: 15px;" : "")}")>@Title</RadzenText>
+                    @if (ShowHelpIcon)
+                    {
+                        <RadzenIcon Icon="help_outline" Style="color: var(--rz-primary); cursor: help;"/>
+                    }
+                </RadzenStack>
+                @if (!string.IsNullOrEmpty(Subtitle))
+                {
+                    <RadzenText TextStyle="TextStyle.Caption" Style="color: var(--rz-text-title-color); margin: 0px;">@Subtitle</RadzenText>
+                }
+            </RadzenStack>
+        </RadzenCard>
+    </RadzenColumn>
+</RadzenRow>
+
+@code {
+
+    [Parameter]
+    public string Title { get; set; }
+
+    [Parameter]
+    public JustifyContent JustifyContent { get; set; } = JustifyContent.Center;
+
+    [Parameter]
+    public int MarginBottomPx { get; set; }
+
+    [Parameter]
+    public int MarginTopPx { get; set; }
+
+    [Parameter]
+    public bool ShowHelpIcon { get; set; }
+
+    [Parameter]
+    public string Subtitle { get; set; }
+
+}

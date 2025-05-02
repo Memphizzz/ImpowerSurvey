@@ -1,0 +1,178 @@
+@page "/admin/users"
+@using ImpowerSurvey.Components.Controls
+@using ImpowerSurvey.Components.Model
+@using ImpowerSurvey.Components.Utilities
+@using ImpowerSurvey.Services
+@using Microsoft.EntityFrameworkCore
+@implements IDisposable
+@inject SurveyDbContext DbContext
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@inject UserService UserService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>@nameof(ImpowerSurvey)</PageTitle>
+
+<CascadingAuthenticationState>
+    <AuthorizeView Roles="@nameof(Roles.Admin)">
+        <NotAuthorized>
+            <NotAuthorizedControl LogError="true" />
+        </NotAuthorized>
+        <Authorized>
+            <HeaderControl Icon="people" Title="User Management" MarginBottomPx="15">
+                <BButton Text="Create New User" Icon="add_circle" ButtonStyle="ButtonStyle.Primary"
+                         Click="@CreateNewUser"/>
+            </HeaderControl>
+            <RadzenCard class="glass-card">
+                <RadzenDataGrid @ref="@DataGrid" AllowFiltering="true" AllowColumnResize="true" AllowAlternatingRows="true"
+                                AllowSorting="true" PageSize="15" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left"
+                                ShowPagingSummary="true" Data="@DbContext.Users.AsNoTracking()"
+                                EditMode="DataGridEditMode.Single" SelectionMode="DataGridSelectionMode.Single">
+                    <Columns>
+                        <RadzenDataGridColumn Property="@nameof(User.Id)" Title="ID" Width="60px" TextAlign="TextAlign.Center"/>
+                        <RadzenDataGridColumn Property="@nameof(User.Username)" Title="Username" Width="120px"/>
+                        <RadzenDataGridColumn Property="@nameof(User.DisplayName)" Title="Display Name" Width="160px"/>
+                        <RadzenDataGridColumn Property="@nameof(User.Email)" Title="Email" Width="200px"/>
+                        <RadzenDataGridColumn Property="@nameof(User.Role)" Title="Role" Width="120px" TextAlign="TextAlign.Center">
+                            <Template Context="user">
+                                <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="@user.Role.ToString()"/>
+                            </Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn Title="Actions" Sortable="false" Filterable="false" Width="120px" TextAlign="TextAlign.Center">
+                            <Template Context="user">
+                                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" Gap="0.5rem">
+                                    <RadzenButton Icon="edit" Size="ButtonSize.Small" IsBusy="@IsBusy"
+                                                  Click="@(async () => await ManageUser(user))"
+                                                  ButtonStyle="ButtonStyle.Primary"/>
+                                    <RadzenButton Icon="delete" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Danger" IsBusy="@IsBusy"
+                                                  Click="@(() => DeleteUserConfirm(user))"/>
+                                </RadzenStack>
+                            </Template>
+                        </RadzenDataGridColumn>
+                    </Columns>
+                </RadzenDataGrid>
+            </RadzenCard>
+        </Authorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+
+@code {
+    private bool IsBusy { get; set; }
+    private RadzenDataGrid<User> DataGrid { get; set; }
+    private CustomAuthStateProvider _authStateProvider;
+
+    protected override void OnInitialized()
+    {
+        _authStateProvider = CustomAuthStateProvider.Get(AuthStateProvider);
+        _authStateProvider.DataGridStateChanged += HandleDataGridStateChanged;
+    }
+
+    private void HandleDataGridStateChanged()
+    {
+        _ = HandleDataGridStateChangedAsync();
+    }
+
+    private async Task HandleDataGridStateChangedAsync()
+    {
+        await InvokeAsync(async () =>
+        {
+            await DataGrid.Reload();
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose()
+    {
+        if (_authStateProvider != null)
+            _authStateProvider.DataGridStateChanged -= HandleDataGridStateChanged;
+    }
+
+    private async Task CreateNewUser()
+    {
+        IsBusy = true;
+        try
+        {
+            var r = await DialogService.OpenAsync<CreateUserDialog>("Create User");
+            if (r is (bool success, string password, string message) )
+            {
+                if (success)
+                {
+                    await DialogService.Alert($"Password: {password}", message);
+                    _authStateProvider.NotifyDataGridStateChanged();
+                }
+
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = success ? NotificationSeverity.Success : NotificationSeverity.Error,
+                    Summary = success ? Constants.UI.Success : Constants.UI.Error,
+                    Detail = message,
+                    Duration = success ? 4000 : -1
+                });
+            }
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task ManageUser(User user)
+    {
+        IsBusy = true;
+        try 
+        {
+            var result = await DialogService.OpenAsync<EditUserDialog>($"Manage User: {user.Username}", 
+                new Dictionary<string, object> { { "UserID", user.Id } });
+                
+            if (result != null)
+            {
+                _authStateProvider.NotifyDataGridStateChanged();
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Success,
+                    Summary = Constants.UI.Success,
+                    Detail = Constants.Users.Updated,
+                    Duration = 3000
+                });
+            }
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task DeleteUserConfirm(User user)
+    {
+        if (user.Role == Roles.Admin)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = Constants.UI.Error,
+                Detail = "Admins cannot be deleted",
+                Duration = 4000
+            });
+            return;
+        }
+        
+        var result = await DialogService.Confirm($"Are you sure you want to delete user '{user.DisplayName}' ({user.Username})?", "Delete User",
+            new ConfirmOptions { OkButtonText = "Yes", CancelButtonText = "No" });
+            
+        if (result == true)
+        {
+            IsBusy = true;
+            try
+            {
+                var deleteResult = await UserService.DeleteUserAsync(user.Id);
+                NotificationService.NotifyFromServiceResult(deleteResult);
+                if (deleteResult.Successful)
+                    _authStateProvider.NotifyDataGridStateChanged();
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+    }
+}
