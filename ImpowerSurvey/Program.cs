@@ -17,8 +17,16 @@ using System.Net;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.AddConsole();
+// Set global EF Core minimum level to Information to suppress debug logs
+builder.Logging.AddFilter("Microsoft.EntityFrameworkCore", LogLevel.Information);
+// Only log warnings for database SQL commands
 builder.Logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Warning);
-builder.Logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Connection", LogLevel.Error);
+// Only show critical connection issues (not transient failures)
+builder.Logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Connection", LogLevel.Critical);
+// Filter out transient exception retries in Infrastructure category
+builder.Logging.AddFilter("Microsoft.EntityFrameworkCore.Infrastructure", LogLevel.Warning);
+// Filter out SlackNet trace logs
+builder.Logging.AddFilter("SlackNet", LogLevel.Information);
 
 // Create a logger for configuration checking and startup process
 var loggerFactory = LoggerFactory.Create(configure => configure.AddConsole());

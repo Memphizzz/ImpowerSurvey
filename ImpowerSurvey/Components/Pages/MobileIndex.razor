@@ -106,6 +106,9 @@
                     <RadzenRequiredValidator Component="txtEntryCode" Text="" Style="position: absolute"/>
                 </RadzenFormField>
                 <RadzenButton ButtonType="ButtonType.Submit" Text="Take Survey" Icon="east" IsBusy="@IsBusy" BusyText="@Constants.UI.Busy"/>
+                <RadzenAlert AlertStyle="AlertStyle.Success" Icon="how_to_vote" ShowIcon="true" AllowClose="false" Style="margin: 0px; margin-top: 5px;">
+                    Want to try it out?<br/>Use entry code <b>demo</b> to see a sample survey!
+                </RadzenAlert>
             </RadzenStack>
         </RadzenCard>
     </RadzenTemplateForm>

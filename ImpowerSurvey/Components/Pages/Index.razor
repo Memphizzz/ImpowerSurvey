@@ -41,7 +41,7 @@
     <RadzenColumn>
         <RadzenTemplateForm TItem="@UserInfo" Data="@UserInfo" Submit="@OnSubmit">
             @* ### Entry Code ### *@
-            <RadzenCard class="glass-content" Style="width: 500px; height: 300px; display: flex; flex-direction: column;">
+            <RadzenCard class="glass-content" Style="width: 500px; display: flex; flex-direction: column;">
                 <RadzenIcon Icon="contact_support" Style="width: 48px; height: 48px; font-size: 48px; color: var(--rz-text-title-color); align-self: center;"/>
                 <div Style="flex-grow: 1; display: flex; flex-direction: column; justify-content: center;">
                     <RadzenText Text="Participate in an Anonymous Survey" TextStyle="TextStyle.H6" TagName="TagName.H3" Style="margin-bottom: 0.5rem;"/>
@@ -53,6 +53,9 @@ Your honest feedback is valuable and your privacy is our priority." TextStyle="T
                     <RadzenRequiredValidator Component="txtEntryCode" Text="" Style="position: absolute"/>
                 </RadzenFormField>
                 <RadzenButton Text="Take Survey" ButtonType="ButtonType.Submit" Icon="east" IsBusy="@IsBusy" BusyText="@Constants.UI.Busy"/>
+                <RadzenAlert AlertStyle="AlertStyle.Success" Icon="how_to_vote" ShowIcon="true" AllowClose="false" Style="margin: 0px; margin-top: 5px;">
+                    Want to try it out?<br/>Use entry code <b>demo</b> to see a sample survey!
+                </RadzenAlert>
             </RadzenCard>
         </RadzenTemplateForm>
     </RadzenColumn>
