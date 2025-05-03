@@ -27,11 +27,6 @@ builder.Logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Connection", L
 builder.Logging.AddFilter("Microsoft.EntityFrameworkCore.Infrastructure", LogLevel.Warning);
 // Filter out SlackNet trace logs
 builder.Logging.AddFilter("SlackNet", LogLevel.Information);
-// Specifically filter out the retry messages
-builder.Logging.AddFilter((provider, category, logLevel) => 
-    !(category == "Microsoft.EntityFrameworkCore.Infrastructure" && 
-      provider.Contains("ConsoleLoggerProvider") && 
-      (logLevel == LogLevel.Information || logLevel == LogLevel.Debug)));
 
 // Create a logger for configuration checking and startup process
 var loggerFactory = LoggerFactory.Create(configure => configure.AddConsole());
