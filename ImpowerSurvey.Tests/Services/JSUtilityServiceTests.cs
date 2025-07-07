@@ -114,21 +114,6 @@ namespace ImpowerSurvey.Tests.Services
                 Times.Once);
         }
 
-        [TestMethod]
-        public async Task SetImpowerColors_CallsJsFunction()
-        {
-            // Act
-            await _jsUtilityService.SetImpowerColors();
-            
-            // Assert
-            _mockJsRuntime.Verify(
-                js => js.InvokeAsync<object>(
-                    "setThemeColors",
-                    It.Is<object[]>(args => args.Length == 2 && 
-                                        args[0].Equals("#096AF2") && 
-                                        args[1].Equals("#F27A09"))),
-                Times.Once);
-        }
 
         [TestMethod]
         public async Task UpdateVantaForTheme_CallsJsFunction()

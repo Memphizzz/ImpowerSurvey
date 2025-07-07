@@ -43,10 +43,6 @@ public interface IJSUtilityService
     /// </summary>
     Task AllowTabClosure();
     
-    /// <summary>
-    /// Sets the primary and secondary Impower brand colors
-    /// </summary>
-    Task SetImpowerColors();
     
     /// <summary>
     /// Updates the Vanta.js background effects based on the current theme
@@ -169,13 +165,6 @@ public class JSUtilityService : IJSUtilityService
         await _jsRuntime.InvokeVoidAsync("allowWindowClose");
     }
     
-    /// <summary>
-    /// Sets the primary and secondary Impower brand colors
-    /// </summary>
-    public async Task SetImpowerColors()
-    {
-        await _jsRuntime.InvokeVoidAsync("setThemeColors", "#096AF2", "#F27A09");
-    }
     
     /// <summary>
     /// Updates the Vanta.js background effects based on the current theme

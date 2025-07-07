@@ -54,43 +54,7 @@ window.scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-window.setThemeColors = (primaryColor, secondaryColor) => {
-    // Primary colors
-    document.documentElement.style.setProperty('--rz-primary', '#096AF2');
-    document.documentElement.style.setProperty('--rz-primary-light', '#3A8DF5');
-    document.documentElement.style.setProperty('--rz-primary-lighter', 'rgba(9, 106, 242, 0.12)');
-    document.documentElement.style.setProperty('--rz-primary-dark', '#0755C1');
-    document.documentElement.style.setProperty('--rz-primary-darker', '#054699');
-    
-    // Secondary colors
-    document.documentElement.style.setProperty('--rz-secondary', '#F27A09');
-    document.documentElement.style.setProperty('--rz-secondary-light', '#F5953A');
-    document.documentElement.style.setProperty('--rz-secondary-lighter', 'rgba(242, 122, 9, 0.12)');
-    document.documentElement.style.setProperty('--rz-secondary-dark', '#C16107');
-    document.documentElement.style.setProperty('--rz-secondary-darker', '#994D06');
-    
-    // Update existing properties
-    document.documentElement.style.setProperty('--rz-steps-number-selected-background', '#096AF2');
-    document.documentElement.style.setProperty('--rz-steps-title-selected-color', '#096AF2');
-    document.documentElement.style.setProperty('--rz-info', '#096AF2');
-    document.documentElement.style.setProperty('--rz-info-dark', '#0755C1');
-    document.documentElement.style.setProperty('--rz-link-color', '#096AF2');
-    document.documentElement.style.setProperty('--rz-link-hover-color', '#0755C1');
-    document.documentElement.style.setProperty('--rz-on-primary-lighter', '#096AF2');
-    document.documentElement.style.setProperty('--rz-on-secondary-lighter', '#F27A09');
-};
 
-window.setRzPrimaryColor = (color) => {
-    document.documentElement.style.setProperty('--rz-primary', color);
-    document.documentElement.style.setProperty('--rz-steps-number-selected-background', color);
-    document.documentElement.style.setProperty('--rz-steps-title-selected-color', color);
-    document.documentElement.style.setProperty('--rz-info', color);
-    document.documentElement.style.setProperty('--rz-info-dark', color);
-    document.documentElement.style.setProperty('--rz-link-color', color);
-    document.documentElement.style.setProperty('--rz-link-hover-color', color);
-    document.documentElement.style.setProperty('--rz-on-primary-lighter', "var(--rz-on-base-dark)");
-    document.documentElement.style.setProperty('--rz-primary-lighter', "var(--rz-on-base-light)");
-};
 
 window.applyTablistStyle = (element) => {
     if (element) {

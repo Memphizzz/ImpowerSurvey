@@ -89,7 +89,6 @@ public partial class MainLayout : IDisposable
 				return;
 			}
 
-			await JSUtilityService.SetImpowerColors();
 			await EnableVantaBackground(IsDarkTheme);
 			await JSUtilityService.UpdateGlassCardStyles(IsDarkTheme);
 			

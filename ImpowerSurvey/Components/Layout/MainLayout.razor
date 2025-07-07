@@ -12,6 +12,40 @@
 @inject IJSUtilityService JSUtilityService
 @inject ICookieService CookieService
 
+<style>
+    :root {
+        /* Primary color and variations */
+        --rz-primary: #096af2;
+        --rz-primary-light: color-mix(in srgb, #096af2 80%, white 20%);
+        --rz-primary-lighter: #096af220; /* 20 = 12% opacity in hex */
+        --rz-primary-dark: color-mix(in srgb, #096af2 85%, black 15%);
+        --rz-primary-darker: color-mix(in srgb, #096af2 75%, black 25%);
+    
+        /* Secondary color and variations */
+        --rz-secondary: #f27a09;
+        --rz-secondary-light: color-mix(in srgb, #f27a09 80%, white 20%);
+        --rz-secondary-lighter: #f27a0920; /* 20 = 12% opacity in hex */
+        --rz-secondary-dark: color-mix(in srgb, #f27a09 85%, black 15%);
+        --rz-secondary-darker: color-mix(in srgb, #f27a09 75%, black 25%);
+    
+        /* Custom theme colors for consistent text styling */
+        --secondary-text-color: #096af2;
+    
+        /* Additional UI colors that use primary color */
+        --rz-info: #096af2;
+        --rz-info-dark: color-mix(in srgb, #096af2 85%, black 15%);
+        --rz-link-color: #096af2;
+        --rz-link-hover-color: color-mix(in srgb, #096af2 85%, black 15%);
+    
+        /* Background gradient */
+        --gradient-start: #096af2;
+        --gradient-end: #f27a09;
+    }
+
+    /* Apply background gradient to body */
+    body { background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%) !important; }
+</style>
+
 <RadzenComponents/>
 
 <CascadingValue Value="@Survey">

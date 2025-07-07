@@ -36,7 +36,6 @@ public partial class MobileLayout
         
         if (firstRender)
         {
-			await JSUtilityService.SetImpowerColors();
 			await JSUtilityService.EnableVantaBackground();
 			await JSUtilityService.UpdateGlassCardStyles(true);
 
